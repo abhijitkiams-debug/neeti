@@ -26,17 +26,34 @@ be exercised end-to-end without an external identity provider.
 
 ```bash
 npm install
-cp .env.example .env
 npm run db:push     # creates prisma/dev.db from the schema
 npm run db:seed     # seeds a demo tenant, users, vendor org, a published policy, quiz questions
 npm run dev
 ```
+
+`.env` is committed with local dev defaults (SQLite path + a dev-only JWT
+secret, no real secrets) so there's nothing to configure before the first
+run. Override it with a real `.env.local` (gitignored) for anything
+machine- or deployment-specific — see `.env.example` for the variables.
 
 `npm run dev` runs Next.js with the webpack compiler (`next dev --webpack`)
 rather than the new default Turbopack, which as of Next.js 16.2.x has a
 known bug that surfaces as a Turbopack "Runtime Error: Could not find the
 module ... global-error.js#default ... in the React Client Manifest" —
 if you hit that, it's a Turbopack issue, not an app bug.
+
+### Troubleshooting
+
+- **`PrismaClientInitializationError: Environment variable not found:
+  DATABASE_URL`** — there's no `.env` file in the project root. It's
+  committed to the repo, so this should only happen if it was deleted or
+  `git clone` somehow didn't bring it — check `ls .env` and re-clone if
+  it's missing.
+- **Login returns "Invalid credentials"** — the database exists but has no
+  users; run `npm run db:seed`.
+- Any other login failure will now print a full stack trace in the
+  terminal running `npm run dev` (see `src/lib/api.ts`'s `apiError`) —
+  that trace is the fastest way to diagnose it.
 
 Open http://localhost:3000. Seeded logins (see `prisma/seed.ts`):
 

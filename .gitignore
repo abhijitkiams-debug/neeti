@@ -30,8 +30,14 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files — .env is intentionally committed for this project: it only
+# holds a local sqlite path and a dev-only JWT fallback, no real secrets,
+# and skipping it is the #1 source of "why won't it start" reports.
+# .env.local / .env.production.local etc. are still ignored for any real
+# per-machine or deployment secrets.
+.env.local
+.env.*.local
+.env.production
 
 # vercel
 .vercel
