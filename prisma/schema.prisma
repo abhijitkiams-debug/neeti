@@ -1,0 +1,497 @@
+// Neeti — centralised policy management platform
+// Dev datasource is SQLite for zero-infra local running.
+// For production, switch provider to "postgresql" and set DATABASE_URL
+// to a Postgres connection string — the schema below avoids SQLite-only
+// features (JSON is stored as String) so the switch is a one-line change.
+// See README.md > "Switching to Postgres".
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Tenancy
+// ─────────────────────────────────────────────────────────────────────────
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  users               User[]
+  vendorOrgs          VendorOrg[]
+  policyFamilies      PolicyFamily[]
+  policies            Policy[]
+  notifications       Notification[]
+  coverageItems       CoverageChecklistItem[]
+  auditLogs           AuditLog[]
+  ipAllowlistEntries  IpAllowlistEntry[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Identity — employees (AD/SSO is the system of record; this table is the
+// local mirror. `authSource` marks how a record got here so the real AD
+// sync job can be dropped in later without a schema change.)
+// ─────────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String        @id @default(cuid())
+  tenantId      String
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+
+  email         String
+  name          String
+  passwordHash  String?       // only set for String.MANUAL accounts;
+                               // AD_SYNC accounts have no local password
+  role          String  @default("EMPLOYEE")
+  status        String @default("ACTIVE")
+  authSource    String    @default("MANUAL")
+
+  // AD-mirrored attributes used for targeting
+  department    String?
+  location      String?
+  grade         String?
+  designation   String?
+  adObjectId    String?       // future: AD GUID, null until real sync exists
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  deactivatedAt DateTime?
+
+  authoredVersions   PolicyVersion[] @relation("AuthoredVersions")
+  approvedVersions   PolicyVersion[] @relation("ApprovedVersions")
+  readReceipts       ReadReceipt[]
+  attestations       Attestation[]
+  audienceMemberships AudienceMember[]
+  stars              Star[]
+  notifications      Notification[]
+  quizAssignments    QuizAssignment[]
+  quizQuestionsAuthored QuizQuestion[]
+  auditLogs          AuditLog[]
+  approvalActions    ApprovalAction[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId, department])
+  @@index([tenantId, location])
+  @@index([tenantId, grade])
+  @@index([tenantId, designation])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Identity — vendors
+// ─────────────────────────────────────────────────────────────────────────
+
+model VendorOrg {
+  id                String          @id @default(cuid())
+  tenantId          String
+  tenant            Tenant          @relation(fields: [tenantId], references: [id])
+
+  name              String
+  type              String
+  region            String
+  category          String          // e.g. "Collections", "Sales", "Support"
+  status            String @default("ACTIVE")
+  empanelmentExpiry DateTime?
+
+  createdAt         DateTime        @default(now())
+  deactivatedAt     DateTime?
+
+  vendorUsers       VendorUser[]
+  uploadBatches     VendorUploadBatch[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, category])
+  @@index([tenantId, region])
+}
+
+model VendorUser {
+  id           String        @id @default(cuid())
+  tenantId     String
+  vendorOrgId  String
+  vendorOrg    VendorOrg     @relation(fields: [vendorOrgId], references: [id])
+
+  name         String
+  mobile       String        // OTP login identity
+  role         String    @default("VENDOR_USER")
+  geography    String?
+  status       String @default("ACTIVE")
+
+  createdAt     DateTime  @default(now())
+  deactivatedAt DateTime?
+
+  otpCodes            OtpCode[]
+  readReceipts        ReadReceipt[]
+  attestations        Attestation[]
+  audienceMemberships AudienceMember[]
+  stars               Star[]
+  notifications       Notification[]
+  quizAssignments     QuizAssignment[]
+
+  @@unique([tenantId, mobile])
+  @@index([tenantId, vendorOrgId])
+}
+
+model OtpCode {
+  id           String     @id @default(cuid())
+  vendorUserId String
+  vendorUser   VendorUser @relation(fields: [vendorUserId], references: [id])
+  codeHash     String
+  purpose      String     // "LOGIN" | "ATTESTATION"
+  expiresAt    DateTime
+  consumedAt   DateTime?
+  createdAt    DateTime   @default(now())
+
+  @@index([vendorUserId, purpose])
+}
+
+model VendorUploadBatch {
+  id           String    @id @default(cuid())
+  vendorOrgId  String
+  vendorOrg    VendorOrg @relation(fields: [vendorOrgId], references: [id])
+  fileName     String
+  uploadedById String    // User.id (Admin/Vendor Admin who ran the upload)
+  totalRows    Int
+  successCount Int
+  errorCount   Int
+  errorLog     String    // JSON string: [{row, reason}]
+  createdAt    DateTime  @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Content
+// ─────────────────────────────────────────────────────────────────────────
+
+model PolicyFamily {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  name        String   // e.g. "Business", "Ops", "Collections"
+  description String?
+  sortOrder   Int      @default(0)
+
+  policies         Policy[]
+  coverageItems    CoverageChecklistItem[]
+
+  @@unique([tenantId, name])
+}
+
+model Policy {
+  id                String   @id @default(cuid())
+  tenantId          String
+  tenant            Tenant   @relation(fields: [tenantId], references: [id])
+  familyId          String
+  family            PolicyFamily @relation(fields: [familyId], references: [id])
+
+  title             String
+  slug              String   // unique URL segment, human readable
+  currentVersionId  String?  @unique
+  currentVersion    PolicyVersion? @relation("CurrentVersion", fields: [currentVersionId], references: [id])
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  versions          PolicyVersion[] @relation("PolicyVersions")
+  stars             Star[]
+  quizQuestions     QuizQuestion[]
+  coverageLinks     CoverageChecklistItem[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, familyId])
+}
+
+model PolicyVersion {
+  id             String        @id @default(cuid())
+  policyId       String
+  policy         Policy        @relation("PolicyVersions", fields: [policyId], references: [id])
+  currentOfPolicy Policy?      @relation("CurrentVersion")
+
+  versionNumber  Int
+  contentHtml    String        // sanitized HTML from WYSIWYG or docx conversion
+  sourceType     String    @default("WYSIWYG")
+  sourceFileUrl  String?       // original .docx/.pdf, if any
+
+  status         String @default("DRAFT")
+
+  authorId       String
+  author         User          @relation("AuthoredVersions", fields: [authorId], references: [id])
+  approverId     String?
+  approver       User?         @relation("ApprovedVersions", fields: [approverId], references: [id])
+  approvalComment String?
+
+  publishedAt    DateTime?
+  recalledAt     DateTime?
+  expiresAt      DateTime?
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  targetRules      TargetRule[]
+  audienceMembers  AudienceMember[]
+  readReceipts     ReadReceipt[]
+  attestations     Attestation[]
+  notifications    Notification[]
+  approvalActions  ApprovalAction[]
+
+  @@unique([policyId, versionNumber])
+}
+
+model ApprovalAction {
+  id              String              @id @default(cuid())
+  policyVersionId String
+  policyVersion   PolicyVersion       @relation(fields: [policyVersionId], references: [id])
+  actorId         String
+  actor           User                @relation(fields: [actorId], references: [id])
+  action          String
+  comment         String?
+  createdAt       DateTime            @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Targeting
+// ─────────────────────────────────────────────────────────────────────────
+
+model TargetRule {
+  id              String        @id @default(cuid())
+  policyVersionId String
+  policyVersion   PolicyVersion @relation(fields: [policyVersionId], references: [id])
+
+  kind            String
+  attribute       String?       // department|location|grade|designation|vendorOrg|category|role|geography
+  values          String        // JSON string array of matching values / user ids / mobiles
+  createdAt       DateTime      @default(now())
+}
+
+// Snapshot of who a version was actually published to (resolved from
+// TargetRules at publish time). This is the audience read receipts,
+// attestations and notifications are scoped against.
+model AudienceMember {
+  id              String        @id @default(cuid())
+  policyVersionId String
+  policyVersion   PolicyVersion @relation(fields: [policyVersionId], references: [id])
+
+  userId          String?
+  user            User?         @relation(fields: [userId], references: [id])
+  vendorUserId    String?
+  vendorUser      VendorUser?   @relation(fields: [vendorUserId], references: [id])
+
+  addedAt         DateTime      @default(now())
+
+  @@unique([policyVersionId, userId])
+  @@unique([policyVersionId, vendorUserId])
+  @@index([policyVersionId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Engagement
+// ─────────────────────────────────────────────────────────────────────────
+
+model ReadReceipt {
+  id              String        @id @default(cuid())
+  policyVersionId String
+  policyVersion   PolicyVersion @relation(fields: [policyVersionId], references: [id])
+  userId          String?
+  user            User?         @relation(fields: [userId], references: [id])
+  vendorUserId    String?
+  vendorUser      VendorUser?   @relation(fields: [vendorUserId], references: [id])
+  readAt          DateTime      @default(now())
+
+  @@unique([policyVersionId, userId])
+  @@unique([policyVersionId, vendorUserId])
+}
+
+model Attestation {
+  id              String            @id @default(cuid())
+  policyVersionId String
+  policyVersion   PolicyVersion     @relation(fields: [policyVersionId], references: [id])
+
+  userId          String?
+  user            User?             @relation(fields: [userId], references: [id])
+  vendorUserId    String?
+  vendorUser      VendorUser?       @relation(fields: [vendorUserId], references: [id])
+
+  method          String
+  ipAddress       String?
+  signedAt        DateTime          @default(now())
+  recordHash      String            // sha256 over the immutable fields — tamper-evidence
+
+  @@unique([policyVersionId, userId])
+  @@unique([policyVersionId, vendorUserId])
+}
+
+model Star {
+  id           String      @id @default(cuid())
+  policyId     String
+  policy       Policy      @relation(fields: [policyId], references: [id])
+  userId       String?
+  user         User?       @relation(fields: [userId], references: [id])
+  vendorUserId String?
+  vendorUser   VendorUser? @relation(fields: [vendorUserId], references: [id])
+  createdAt    DateTime    @default(now())
+
+  @@unique([policyId, userId])
+  @@unique([policyId, vendorUserId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Notifications
+// ─────────────────────────────────────────────────────────────────────────
+
+model Notification {
+  id              String              @id @default(cuid())
+  tenantId        String
+  tenant          Tenant              @relation(fields: [tenantId], references: [id])
+
+  type            String
+  channel         String
+  policyVersionId String?
+  policyVersion   PolicyVersion?      @relation(fields: [policyVersionId], references: [id])
+
+  recipientUserId       String?
+  recipientUser         User?         @relation(fields: [recipientUserId], references: [id])
+  recipientVendorUserId String?
+  recipientVendorUser   VendorUser?   @relation(fields: [recipientVendorUserId], references: [id])
+
+  status          String  @default("QUEUED")
+  payload         String              // JSON string: {subject, body, deepLink}
+  error           String?
+
+  createdAt       DateTime            @default(now())
+  sentAt          DateTime?
+
+  @@index([tenantId, status])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Daily Micro-Quiz
+// ─────────────────────────────────────────────────────────────────────────
+
+model QuizQuestion {
+  id            String       @id @default(cuid())
+  policyId      String
+  policy        Policy       @relation(fields: [policyId], references: [id])
+  questionText  String
+  explanation   String?      // shown with instant feedback
+  sectionAnchor String?      // anchor id within policy webview to deep-link back to
+  active        Boolean      @default(true)
+  createdById   String
+  createdBy     User         @relation(fields: [createdById], references: [id])
+  createdAt     DateTime     @default(now())
+
+  options       QuizOption[]
+  assignments   QuizAssignment[]
+}
+
+model QuizOption {
+  id         String       @id @default(cuid())
+  questionId String
+  question   QuizQuestion @relation(fields: [questionId], references: [id])
+  text       String
+  isCorrect  Boolean      @default(false)
+
+  assignments QuizAssignment[]
+}
+
+model QuizAssignment {
+  id                 String       @id @default(cuid())
+  date               DateTime     // day this question was served (date-truncated)
+  questionId         String
+  question           QuizQuestion @relation(fields: [questionId], references: [id])
+
+  userId             String?
+  user               User?        @relation(fields: [userId], references: [id])
+  vendorUserId       String?
+  vendorUser         VendorUser?  @relation(fields: [vendorUserId], references: [id])
+
+  shuffledOptionIds  String       // JSON array — option display order for this assignment
+  order              Int          // 1..5, position within the day's set
+
+  answeredOptionId   String?
+  answeredOption     QuizOption?  @relation(fields: [answeredOptionId], references: [id])
+  isCorrect          Boolean?
+  answeredAt         DateTime?
+
+  createdAt          DateTime     @default(now())
+
+  @@index([userId, date])
+  @@index([vendorUserId, date])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Policy Coverage Checklist (governance register)
+// ─────────────────────────────────────────────────────────────────────────
+
+model CoverageChecklistItem {
+  id             String          @id @default(cuid())
+  tenantId       String
+  tenant         Tenant          @relation(fields: [tenantId], references: [id])
+  familyId       String?
+  family         PolicyFamily?   @relation(fields: [familyId], references: [id])
+
+  itemName       String
+  mandatory      Boolean         @default(true)
+  sourceTemplate String          @default("CUSTOM") // "COLLECTIONS_RECOVERY" | "CUSTOM"
+  statusOverride String?  // manual override; else status is derived from linkedPolicy
+
+  linkedPolicyId String?
+  linkedPolicy   Policy?         @relation(fields: [linkedPolicyId], references: [id])
+
+  reviewDueAt    DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// RBI Notifications ingestion
+// ─────────────────────────────────────────────────────────────────────────
+
+model RbiCircular {
+  id                  String    @id @default(cuid())
+  title               String
+  sourceUrl           String    @unique
+  pdfUrl              String?
+  publishedDate       DateTime?
+  summary             String?
+  tags                String    // JSON string array: ["NBFC","CO_OP_BANK","SMALL_BANK","BANK"]
+  scrapedAt           DateTime  @default(now())
+  importedAsPolicyId  String?
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Security baseline
+// ─────────────────────────────────────────────────────────────────────────
+
+model IpAllowlistEntry {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  cidr       String   // e.g. "203.0.113.0/24" — applies to /admin console only
+  label      String?
+  createdAt  DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  actorType  String   // "USER" | "VENDOR_USER" | "SYSTEM"
+  actorId    String?
+  actorUser  User?    @relation(fields: [actorId], references: [id])
+
+  action     String   // e.g. "POLICY_PUBLISHED", "VENDOR_ORG_DEACTIVATED"
+  entityType String
+  entityId   String
+  metadata   String   // JSON string
+  prevHash   String   // hash of previous log row, chained for tamper-evidence
+  hash       String
+
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, entityType, entityId])
+}

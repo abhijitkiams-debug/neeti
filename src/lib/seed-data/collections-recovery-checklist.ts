@@ -1,0 +1,36 @@
+// Appendix A — Collections & Recovery coverage template (30 items).
+// Seeded per-tenant into CoverageChecklistItem on first admin visit / seed run.
+// Admins can edit, reorder, or add tenant-specific items after seeding.
+
+export const COLLECTIONS_RECOVERY_CHECKLIST: { itemName: string; mandatory: boolean }[] = [
+  { itemName: "Fair Practices Code (FPC)", mandatory: true },
+  { itemName: "Recovery Agent Code of Conduct", mandatory: true },
+  { itemName: "Collections Call Time Restrictions Policy (0700–1900 hrs)", mandatory: true },
+  { itemName: "Recovery Agent Empanelment & Due Diligence Policy", mandatory: true },
+  { itemName: "Recovery Agent Training & Certification (IIBF) Policy", mandatory: true },
+  { itemName: "Grievance Redressal Mechanism for Collections", mandatory: true },
+  { itemName: "Repossession of Vehicles/Assets Policy", mandatory: true },
+  { itemName: "Security Repossession Notice & Sale Process", mandatory: true },
+  { itemName: "Field Collection Visit Protocol", mandatory: true },
+  { itemName: "Outsourcing of Recovery/Collection Activities Policy", mandatory: true },
+  { itemName: "Third-Party Recovery Agency Agreement Guidelines", mandatory: true },
+  { itemName: "Do Not Call / Do Not Disturb Compliance Policy", mandatory: true },
+  { itemName: "Customer Harassment Prevention Policy", mandatory: true },
+  { itemName: "Recovery Agent Identity Card & Authorization Letter Policy", mandatory: true },
+  { itemName: "Data Privacy in Collections (Customer Data Handling)", mandatory: true },
+  { itemName: "Settlement & Compromise (One-Time Settlement) Policy", mandatory: true },
+  { itemName: "Write-off & Provisioning Policy for NPAs", mandatory: true },
+  { itemName: "SARFAESI Act Compliance Policy", mandatory: false },
+  { itemName: "Legal Recovery & Litigation Management Policy", mandatory: true },
+  { itemName: "Skip Tracing Policy", mandatory: false },
+  { itemName: "Collections Escalation Matrix", mandatory: true },
+  { itemName: "Recovery Agent Performance Monitoring & Audit Policy", mandatory: true },
+  { itemName: "Customer Communication in Vernacular Language Policy", mandatory: false },
+  { itemName: "Collections Call Recording & Monitoring Policy", mandatory: true },
+  { itemName: "Co-lending / Co-origination Recovery Responsibility Policy", mandatory: false },
+  { itemName: "NPA Classification & Reporting Policy", mandatory: true },
+  { itemName: "Recovery of Dues from Deceased Borrowers Policy", mandatory: false },
+  { itemName: "Restructuring & Rehabilitation of Stressed Accounts Policy", mandatory: false },
+  { itemName: "Grievance Redressal — Nodal Officer for Recovery Complaints", mandatory: true },
+  { itemName: "Recovery Agent Exit & Termination Policy", mandatory: false },
+];
