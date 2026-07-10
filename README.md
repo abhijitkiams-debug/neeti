@@ -32,6 +32,12 @@ npm run db:seed     # seeds a demo tenant, users, vendor org, a published policy
 npm run dev
 ```
 
+`npm run dev` runs Next.js with the webpack compiler (`next dev --webpack`)
+rather than the new default Turbopack, which as of Next.js 16.2.x has a
+known bug that surfaces as a Turbopack "Runtime Error: Could not find the
+module ... global-error.js#default ... in the React Client Manifest" —
+if you hit that, it's a Turbopack issue, not an app bug.
+
 Open http://localhost:3000. Seeded logins (see `prisma/seed.ts`):
 
 | Role | Login |
