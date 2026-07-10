@@ -83,3 +83,101 @@ export function rowsToCsv(rows: Record<string, string>[]) {
   const escape = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
   return [headers.join(","), ...rows.map((r) => headers.map((h) => escape(r[h])).join(","))].join("\n");
 }
+
+const DAY_BUCKETS = [
+  { label: "Day 1", minDay: 0, maxDay: 1 },
+  { label: "Day 2", minDay: 1, maxDay: 2 },
+  { label: "Day 3", minDay: 2, maxDay: 3 },
+  { label: "Day 4", minDay: 3, maxDay: 4 },
+  { label: "Next week", minDay: 4, maxDay: 11 },
+  { label: "Next month", minDay: 11, maxDay: 41 },
+  { label: "Later", minDay: 41, maxDay: Infinity },
+] as const;
+
+/**
+ * Full per-document engagement metrics for a policy version — the fields
+ * mirror a familiar "policy report" layout: audience reach, unique
+ * engagement, and response-button activity, plus a day-bucketed
+ * distribution of when people first responded relative to publish date.
+ *
+ * A note on field mapping: this build's action bar is Sign (Attestation) /
+ * Helpful / Not Helpful / Ask a question — "Accept" below is the Sign
+ * click count, and Helpful/Not Helpful/Questions are reported directly
+ * rather than invented generic "Interested/Understood" buckets that don't
+ * correspond to any real control in the UI.
+ */
+export async function documentEngagementMetrics(versionId: string) {
+  const version = await prisma.policyVersion.findUniqueOrThrow({ where: { id: versionId } });
+
+  const [audience, reads, attestations, accessLogs, feedback, questions] = await Promise.all([
+    prisma.audienceMember.findMany({ where: { policyVersionId: versionId } }),
+    prisma.readReceipt.findMany({ where: { policyVersionId: versionId } }),
+    prisma.attestation.findMany({ where: { policyVersionId: versionId } }),
+    prisma.accessLog.findMany({ where: { policyVersionId: versionId } }),
+    prisma.policyFeedback.findMany({ where: { policyVersionId: versionId } }),
+    prisma.policyQuestion.findMany({ where: { policyVersionId: versionId } }),
+  ]);
+
+  const identity = (row: { userId?: string | null; vendorUserId?: string | null }) => row.userId ?? `v:${row.vendorUserId}`;
+
+  const audienceIds = new Set(audience.map(identity));
+  const readIds = new Set(reads.map(identity));
+  const accessIds = new Set(accessLogs.map(identity));
+  const respondentIds = new Set([...attestations, ...feedback, ...questions].map(identity));
+
+  const sentTo = audience.length;
+  const readBy = readIds.size;
+  const yetToRead = Math.max(0, sentTo - readBy);
+  const nonFollowersWhoRead = [...accessIds].filter((id) => !audienceIds.has(id)).length;
+  const totalUniqueUsers = new Set([...accessIds, ...readIds, ...respondentIds]).size;
+  const totalTimesRead = accessLogs.length;
+  const publicPageViews = totalTimesRead; // no unauthenticated public-link viewing in this build
+  const uniqueRespondents = respondentIds.size;
+  const acceptCount = attestations.length;
+  const helpfulCount = feedback.filter((f) => f.helpful).length;
+  const notHelpfulCount = feedback.filter((f) => !f.helpful).length;
+  const questionsCount = questions.length;
+  const totalResponseClicks = acceptCount + helpfulCount + notHelpfulCount + questionsCount;
+
+  // First-response day bucketing, relative to publish date.
+  const firstResponseAt = new Map<string, Date>();
+  const consider = (id: string, at: Date) => {
+    const existing = firstResponseAt.get(id);
+    if (!existing || at < existing) firstResponseAt.set(id, at);
+  };
+  attestations.forEach((a) => consider(identity(a), a.signedAt));
+  feedback.forEach((f) => consider(identity(f), f.createdAt));
+  questions.forEach((q) => consider(identity(q), q.createdAt));
+
+  const bucketCounts = DAY_BUCKETS.map((b) => ({ label: b.label, count: 0 }));
+  if (version.publishedAt) {
+    for (const at of firstResponseAt.values()) {
+      const daysSince = (at.getTime() - version.publishedAt.getTime()) / (1000 * 60 * 60 * 24);
+      const idx = DAY_BUCKETS.findIndex((b) => daysSince >= b.minDay && daysSince < b.maxDay);
+      if (idx >= 0) bucketCounts[idx].count++;
+    }
+  }
+  const totalBucketed = bucketCounts.reduce((s, b) => s + b.count, 0);
+  const responseDistribution = bucketCounts.map((b) => ({
+    label: b.label,
+    count: b.count,
+    percent: totalBucketed > 0 ? Math.round((b.count / totalBucketed) * 100) : 0,
+  }));
+
+  return {
+    sentTo,
+    readBy,
+    yetToRead,
+    nonFollowersWhoRead,
+    totalUniqueUsers,
+    totalTimesRead,
+    publicPageViews,
+    uniqueRespondents,
+    accept: acceptCount,
+    helpful: helpfulCount,
+    notHelpful: notHelpfulCount,
+    questionsAsked: questionsCount,
+    totalResponseClicks,
+    responseDistribution,
+  };
+}

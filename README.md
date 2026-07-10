@@ -154,6 +154,11 @@ works identically on Postgres.
 - Policy Coverage Checklist, seeded with the 30-item Collections & Recovery template (Appendix A), live status derived from linked policies, coverage %
 - **RBI notifications scraper is live** — it fetches and parses `rbi.org.in`'s actual notification list, tags NBFC/Co-operative Bank/Small Finance Bank/Bank by keyword heuristics, and can import a circular as a draft policy starting point
 - Hash-chained audit log with an integrity verification endpoint
+- Tenant-wide pending-consent metric with drill-down (name, employee/vendor, agency, document, pending-since)
+- Editable expiry on a live published version (not just at publish time), plus an "expiring soon" dashboard widget
+- Per-webview-open access log with request-level technical detail (IP, browser/OS, identity, timestamp) — `Admin → policy → Access logs`
+- Per-document report metrics panel (sent/read/unique users/total views/accept/helpful/questions + first-response day-bucket distribution)
+- Consumption webview action bar: Sign (attestation) / Helpful / Not Helpful / Ask a question, with an admin-side answer flow for questions
 
 **Intentionally stubbed / documented limitations:**
 - **AD/SAML SSO** — see [above](#auth--the-ad--sso-swap-point); explicitly out of scope for this build

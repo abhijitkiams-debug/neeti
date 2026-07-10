@@ -75,6 +75,10 @@ model User {
   quizQuestionsAuthored QuizQuestion[]
   auditLogs          AuditLog[]
   approvalActions    ApprovalAction[]
+  accessLogs         AccessLog[]
+  policyFeedback     PolicyFeedback[]
+  questionsAsked     PolicyQuestion[] @relation("QuestionAskedBy")
+  questionsAnswered  PolicyQuestion[] @relation("QuestionAnsweredBy")
 
   @@unique([tenantId, email])
   @@index([tenantId, department])
@@ -132,6 +136,9 @@ model VendorUser {
   stars               Star[]
   notifications       Notification[]
   quizAssignments     QuizAssignment[]
+  accessLogs          AccessLog[]
+  policyFeedback      PolicyFeedback[]
+  questionsAsked      PolicyQuestion[]
 
   @@unique([tenantId, mobile])
   @@index([tenantId, vendorOrgId])
@@ -237,6 +244,9 @@ model PolicyVersion {
   attestations     Attestation[]
   notifications    Notification[]
   approvalActions  ApprovalAction[]
+  accessLogs       AccessLog[]
+  policyFeedback   PolicyFeedback[]
+  questions        PolicyQuestion[]
 
   @@unique([policyId, versionNumber])
 }
@@ -336,6 +346,68 @@ model Star {
 
   @@unique([policyId, userId])
   @@unique([policyId, vendorUserId])
+}
+
+// Every open of the policy webview — distinct from ReadReceipt (which marks
+// "have you read this at all, once"). This is the raw access trail with
+// request-level technical detail, for the admin access-log viewer.
+model AccessLog {
+  id              String        @id @default(cuid())
+  policyVersionId String
+  policyVersion   PolicyVersion @relation(fields: [policyVersionId], references: [id])
+
+  userId          String?
+  user            User?         @relation(fields: [userId], references: [id])
+  vendorUserId    String?
+  vendorUser      VendorUser?   @relation(fields: [vendorUserId], references: [id])
+
+  ipAddress       String?
+  userAgent       String?
+  accessedAt      DateTime      @default(now())
+
+  @@index([policyVersionId, accessedAt])
+}
+
+// Lightweight "Helpful / Not Helpful" engagement signal shown on the
+// consumption webview action bar — separate from Attestation, which is the
+// legally-binding signed acknowledgement.
+model PolicyFeedback {
+  id              String        @id @default(cuid())
+  policyVersionId String
+  policyVersion   PolicyVersion @relation(fields: [policyVersionId], references: [id])
+
+  userId          String?
+  user            User?         @relation(fields: [userId], references: [id])
+  vendorUserId    String?
+  vendorUser      VendorUser?   @relation(fields: [vendorUserId], references: [id])
+
+  helpful         Boolean
+  createdAt       DateTime      @default(now())
+
+  @@unique([policyVersionId, userId])
+  @@unique([policyVersionId, vendorUserId])
+}
+
+// "Ask a question" from the webview action bar — a Publisher/Admin can
+// answer it from the policy's admin page.
+model PolicyQuestion {
+  id              String        @id @default(cuid())
+  policyVersionId String
+  policyVersion   PolicyVersion @relation(fields: [policyVersionId], references: [id])
+
+  userId          String?
+  user            User?         @relation("QuestionAskedBy", fields: [userId], references: [id])
+  vendorUserId    String?
+  vendorUser      VendorUser?   @relation(fields: [vendorUserId], references: [id])
+
+  questionText    String
+  status          String        @default("OPEN") // "OPEN" | "ANSWERED"
+  answerText      String?
+  answeredById    String?
+  answeredBy      User?         @relation("QuestionAnsweredBy", fields: [answeredById], references: [id])
+  answeredAt      DateTime?
+
+  createdAt       DateTime      @default(now())
 }
 
 // ─────────────────────────────────────────────────────────────────────────

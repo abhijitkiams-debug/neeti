@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { PdfViewer } from "@/components/PdfViewer";
+import dynamic from "next/dynamic";
+
+// pdfjs-dist crashes at module-evaluation time under the webpack dev
+// compiler if imported eagerly, which would break every policy page (not
+// just PDF ones) since this file is loaded for all of them. Load it lazily,
+// client-side only, and only once a PDF-sourced policy actually needs it.
+const PdfViewer = dynamic(() => import("@/components/PdfViewer").then((m) => m.PdfViewer), { ssr: false });
 
 type PolicyData = {
   policy: {
@@ -95,19 +101,73 @@ export function PolicyDetailClient({
         </div>
       )}
 
-      {data && !data.hasAttested && (
-        <AttestPanel slug={slug} sessionKind={sessionKind} onDone={() => setData({ ...data, hasAttested: true })} />
-      )}
-      {data?.hasAttested && (
-        <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          ✓ You have acknowledged this policy.
-        </div>
+      {data && (
+        <ActionBar
+          slug={slug}
+          sessionKind={sessionKind}
+          hasAttested={data.hasAttested}
+          onAttested={() => setData({ ...data, hasAttested: true })}
+        />
       )}
     </div>
   );
 }
 
-function AttestPanel({ slug, sessionKind, onDone }: { slug: string; sessionKind: "employee" | "vendor"; onDone: () => void }) {
+function ActionBar({
+  slug,
+  sessionKind,
+  hasAttested,
+  onAttested,
+}: {
+  slug: string;
+  sessionKind: "employee" | "vendor";
+  hasAttested: boolean;
+  onAttested: () => void;
+}) {
+  return (
+    <div className="mt-6 grid gap-4 rounded-lg border border-slate-200 bg-white p-6 sm:grid-cols-3">
+      <SignColumn slug={slug} sessionKind={sessionKind} hasAttested={hasAttested} onAttested={onAttested} />
+      <FeedbackColumn slug={slug} />
+      <QuestionColumn slug={slug} />
+    </div>
+  );
+}
+
+function SignColumn({
+  slug,
+  sessionKind,
+  hasAttested,
+  onAttested,
+}: {
+  slug: string;
+  sessionKind: "employee" | "vendor";
+  hasAttested: boolean;
+  onAttested: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div>
+      <p className="text-sm text-slate-700">{hasAttested ? "You have signed this document" : "You are requested to sign this document"}</p>
+      {hasAttested ? (
+        <p className="mt-2 inline-flex items-center rounded-md border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700">
+          ✓ Signed
+        </p>
+      ) : expanded ? (
+        <AttestForm slug={slug} sessionKind={sessionKind} onDone={onAttested} />
+      ) : (
+        <button
+          onClick={() => setExpanded(true)}
+          className="mt-2 rounded-md border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Sign
+        </button>
+      )}
+    </div>
+  );
+}
+
+function AttestForm({ slug, sessionKind, onDone }: { slug: string; sessionKind: "employee" | "vendor"; onDone: () => void }) {
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [otpRequested, setOtpRequested] = useState(false);
@@ -160,67 +220,139 @@ function AttestPanel({ slug, sessionKind, onDone }: { slug: string; sessionKind:
     onDone();
   }
 
-  return (
-    <div className="mt-6 rounded-lg border border-slate-200 bg-white p-6">
-      <h2 className="text-sm font-semibold text-slate-900">Acknowledge this policy</h2>
-
-      {sessionKind === "employee" ? (
-        <form onSubmit={submitEmployee} className="mt-3 flex items-end gap-3">
-          <div className="flex-1">
-            <label className="block text-xs font-medium text-slate-600">Re-enter your password to e-sign</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-60"
-          >
-            I acknowledge
-          </button>
-        </form>
-      ) : !otpRequested ? (
-        <button
-          onClick={requestOtp}
-          disabled={loading}
-          className="mt-3 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-60"
-        >
-          Send OTP to acknowledge
+  if (sessionKind === "employee") {
+    return (
+      <form onSubmit={submitEmployee} className="mt-2 space-y-2">
+        <label className="block text-xs font-medium text-slate-600">Re-enter your password to e-sign</label>
+        <input
+          type="password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+        />
+        <button type="submit" disabled={loading} className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-60">
+          I acknowledge
         </button>
-      ) : (
-        <form onSubmit={submitVendor} className="mt-3 flex items-end gap-3">
-          {devCode && (
-            <p className="w-full rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              Dev mode OTP: <strong>{devCode}</strong>
-            </p>
-          )}
-          <div className="flex-1">
-            <label className="block text-xs font-medium text-slate-600">Enter the 6-digit code</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              required
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm tracking-widest"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-60"
-          >
-            I acknowledge
+        {error && <p className="text-xs text-red-600">{error}</p>}
+      </form>
+    );
+  }
+
+  if (!otpRequested) {
+    return (
+      <button onClick={requestOtp} disabled={loading} className="mt-2 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-60">
+        Send OTP to sign
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={submitVendor} className="mt-2 space-y-2">
+      {devCode && (
+        <p className="rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-800">
+          Dev mode OTP: <strong>{devCode}</strong>
+        </p>
+      )}
+      <input
+        type="text"
+        inputMode="numeric"
+        maxLength={6}
+        required
+        value={code}
+        onChange={(e) => setCode(e.target.value)}
+        placeholder="6-digit code"
+        className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm tracking-widest"
+      />
+      <button type="submit" disabled={loading} className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-60">
+        I acknowledge
+      </button>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </form>
+  );
+}
+
+function FeedbackColumn({ slug }: { slug: string }) {
+  const [choice, setChoice] = useState<"helpful" | "not_helpful" | null>(null);
+
+  async function send(helpful: boolean) {
+    setChoice(helpful ? "helpful" : "not_helpful");
+    await fetch(`/api/consumption/policies/${slug}/feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ helpful }),
+    });
+  }
+
+  return (
+    <div>
+      <p className="text-sm text-slate-700">Want to give feedback?</p>
+      <div className="mt-2 flex gap-2">
+        <button
+          onClick={() => send(true)}
+          className={`rounded-md border px-3 py-1.5 text-sm font-medium ${
+            choice === "helpful" ? "border-emerald-400 bg-emerald-50 text-emerald-700" : "border-slate-300 text-slate-700 hover:bg-slate-50"
+          }`}
+        >
+          Helpful
+        </button>
+        <button
+          onClick={() => send(false)}
+          className={`rounded-md border px-3 py-1.5 text-sm font-medium ${
+            choice === "not_helpful" ? "border-red-400 bg-red-50 text-red-700" : "border-slate-300 text-slate-700 hover:bg-slate-50"
+          }`}
+        >
+          Not Helpful
+        </button>
+      </div>
+      {choice && <p className="mt-1 text-xs text-slate-400">Thanks for the feedback.</p>}
+    </div>
+  );
+}
+
+function QuestionColumn({ slug }: { slug: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [text, setText] = useState("");
+  const [sent, setSent] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!text.trim()) return;
+    await fetch(`/api/consumption/policies/${slug}/question`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ questionText: text }),
+    });
+    setSent(true);
+    setText("");
+  }
+
+  return (
+    <div>
+      <p className="text-sm text-slate-700">Have a doubt?</p>
+      {sent ? (
+        <p className="mt-2 text-xs text-emerald-700">✓ Your question was sent. You&apos;ll see the answer here once it&apos;s addressed.</p>
+      ) : expanded ? (
+        <form onSubmit={submit} className="mt-2 space-y-2">
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={2}
+            placeholder="Type your question…"
+            className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+          />
+          <button type="submit" className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800">
+            Send
           </button>
         </form>
+      ) : (
+        <button
+          onClick={() => setExpanded(true)}
+          className="mt-2 rounded-md border border-slate-900 bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+        >
+          Ask a question
+        </button>
       )}
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>
   );
 }

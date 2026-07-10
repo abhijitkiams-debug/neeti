@@ -304,3 +304,49 @@ export async function autoExpirePastDue(tenantId: string) {
   }
   return due.length;
 }
+
+/** Sets or changes the expiry date on an already-published version, without a full recall/republish. */
+export async function setExpiry(params: { tenantId: string; versionId: string; actorId: string; expiresAt: Date | null }) {
+  const version = await prisma.policyVersion.findUniqueOrThrow({ where: { id: params.versionId } });
+  if (version.status !== "PUBLISHED") throw new PolicyStateError("Can only change expiry on a published version");
+
+  await prisma.policyVersion.update({ where: { id: params.versionId }, data: { expiresAt: params.expiresAt } });
+
+  await writeAuditLog({
+    tenantId: params.tenantId,
+    actorType: "USER",
+    actorId: params.actorId,
+    action: "POLICY_EXPIRY_CHANGED",
+    entityType: "PolicyVersion",
+    entityId: params.versionId,
+    metadata: { expiresAt: params.expiresAt?.toISOString() ?? null },
+  });
+}
+
+export type ExpiringSoonRow = {
+  policyId: string;
+  versionId: string;
+  title: string;
+  familyName: string;
+  expiresAt: Date;
+  daysRemaining: number;
+};
+
+/** Currently-published versions expiring within `days` (default 30), soonest first. */
+export async function getExpiringSoon(tenantId: string, days = 30): Promise<ExpiringSoonRow[]> {
+  const cutoff = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  const versions = await prisma.policyVersion.findMany({
+    where: { status: "PUBLISHED", expiresAt: { not: null, lte: cutoff }, policy: { tenantId } },
+    include: { policy: { include: { family: true } } },
+    orderBy: { expiresAt: "asc" },
+  });
+
+  return versions.map((v) => ({
+    policyId: v.policyId,
+    versionId: v.id,
+    title: v.policy.title,
+    familyName: v.policy.family.name,
+    expiresAt: v.expiresAt!,
+    daysRemaining: Math.ceil((v.expiresAt!.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+  }));
+}

@@ -6,6 +6,8 @@ import { Badge } from "@/components/Badge";
 import { WysiwygEditor } from "@/components/WysiwygEditor";
 import { TargetingEditor, type TargetRule } from "./TargetingEditor";
 import { QuizManager } from "./QuizManager";
+import { EngagementMetrics } from "./EngagementMetrics";
+import { QuestionsPanel } from "./QuestionsPanel";
 
 type Version = {
   id: string;
@@ -67,13 +69,13 @@ export function PolicyWorkflowClient({ policyId, currentUserId, role }: { policy
   const isEditable = ["DRAFT", "REJECTED"].includes(version.status);
   const isMaker = version.authorId === currentUserId;
 
-  async function call(path: string, body?: unknown) {
+  async function call(path: string, body?: unknown, method: "POST" | "PATCH" = "POST") {
     setBusy(true);
     setMessage(null);
     const res = await fetch(path, {
-      method: "POST",
-      headers: body ? { "Content-Type": "application/json" } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
+      method,
+      headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
     });
     setBusy(false);
     if (!res.ok) {
@@ -251,11 +253,64 @@ export function PolicyWorkflowClient({ policyId, currentUserId, role }: { policy
             <Link href={`/admin/reports?versionId=${version.id}`} className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
               View report →
             </Link>
+            <Link href={`/admin/policies/${policyId}/access-logs`} className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              Access logs →
+            </Link>
           </div>
+
+          {CAN_PUBLISH.includes(role) && (
+            <ExpiryEditor
+              currentExpiresAt={version.expiresAt}
+              busy={busy}
+              onChange={(iso) => call(`/api/policies/${policyId}/versions/${version.id}/expiry`, { expiresAt: iso }, "PATCH")}
+            />
+          )}
         </div>
       )}
 
+      {version.status === "PUBLISHED" && <EngagementMetrics versionId={version.id} />}
+
       {CAN_AUTHOR.includes(role) && <QuizManager policyId={policyId} />}
+
+      {CAN_PUBLISH.includes(role) && <QuestionsPanel policyId={policyId} />}
+    </div>
+  );
+}
+
+function ExpiryEditor({
+  currentExpiresAt,
+  busy,
+  onChange,
+}: {
+  currentExpiresAt: string | null;
+  busy: boolean;
+  onChange: (iso: string | null) => void;
+}) {
+  const [value, setValue] = useState(currentExpiresAt ? currentExpiresAt.slice(0, 10) : "");
+
+  return (
+    <div className="mt-3 flex items-end gap-3 border-t border-emerald-200 pt-3">
+      <div>
+        <label className="block text-xs font-medium text-emerald-800">Expiry date</label>
+        <input
+          type="date"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="mt-1 rounded border border-slate-300 px-2 py-1 text-sm"
+        />
+      </div>
+      <button
+        disabled={busy}
+        onClick={() => onChange(value ? new Date(value).toISOString() : null)}
+        className="rounded-md bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-60"
+      >
+        Save expiry
+      </button>
+      {currentExpiresAt && (
+        <button disabled={busy} onClick={() => onChange(null)} className="text-xs text-red-600 hover:underline">
+          Clear expiry
+        </button>
+      )}
     </div>
   );
 }

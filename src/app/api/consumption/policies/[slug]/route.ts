@@ -3,8 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth";
 import { apiError } from "@/lib/api";
 import { visiblePolicyIdsFor, sessionIdentity } from "@/lib/consumption";
+import { clientIp, clientUserAgent } from "@/lib/request-info";
 
-export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const session = await requireSession();
     const { slug } = await params;
@@ -24,6 +25,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
       prisma.attestation.findFirst({ where: { policyVersionId: policy.currentVersionId, userId, vendorUserId } }),
       prisma.star.findFirst({ where: { policyId: policy.id, userId, vendorUserId } }),
     ]);
+
+    await prisma.accessLog.create({
+      data: {
+        policyVersionId: policy.currentVersionId,
+        userId,
+        vendorUserId,
+        ipAddress: clientIp(req),
+        userAgent: clientUserAgent(req),
+      },
+    });
 
     return NextResponse.json({
       policy: {

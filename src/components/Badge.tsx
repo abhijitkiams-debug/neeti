@@ -14,6 +14,10 @@ const COLORS: Record<string, string> = {
   Mandatory: "bg-red-50 text-red-700",
   Recommended: "bg-sky-50 text-sky-700",
   Optional: "bg-slate-100 text-slate-600",
+  Employee: "bg-indigo-50 text-indigo-700",
+  Vendor: "bg-teal-50 text-teal-700",
+  OPEN: "bg-amber-100 text-amber-800",
+  ANSWERED: "bg-emerald-100 text-emerald-800",
 };
 
 export function Badge({ status }: { status: string }) {
