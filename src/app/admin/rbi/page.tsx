@@ -13,6 +13,7 @@ type Circular = {
   summary: string | null;
   tags: string[];
   importedAsPolicyId: string | null;
+  implementationDeadline: string | null;
 };
 type Family = { id: string; name: string };
 
@@ -58,6 +59,15 @@ export default function RbiPage() {
       const { policy } = await res.json();
       router.push(`/admin/policies/${policy.id}`);
     }
+  }
+
+  async function setDeadline(id: string, value: string) {
+    await fetch(`/api/rbi/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ implementationDeadline: value ? new Date(value).toISOString() : null }),
+    });
+    await load();
   }
 
   return (
@@ -110,13 +120,24 @@ export default function RbiPage() {
                 </p>
                 {c.summary && <p className="mt-1 text-sm text-slate-600">{c.summary}</p>}
               </div>
-              <button
-                onClick={() => importAsPolicy(c.id)}
-                disabled={!!c.importedAsPolicyId}
-                className="shrink-0 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-              >
-                {c.importedAsPolicyId ? "Imported" : "Import as draft policy"}
-              </button>
+              <div className="shrink-0 space-y-2 text-right">
+                <button
+                  onClick={() => importAsPolicy(c.id)}
+                  disabled={!!c.importedAsPolicyId}
+                  className="block w-full rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {c.importedAsPolicyId ? "Imported" : "Import as draft policy"}
+                </button>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-500">Implementation deadline</label>
+                  <input
+                    type="date"
+                    defaultValue={c.implementationDeadline ? c.implementationDeadline.slice(0, 10) : ""}
+                    onBlur={(e) => setDeadline(c.id, e.target.value)}
+                    className="mt-0.5 rounded border border-slate-300 px-2 py-1 text-xs"
+                  />
+                </div>
+              </div>
             </div>
           </li>
         ))}

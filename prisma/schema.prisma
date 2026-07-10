@@ -523,15 +523,20 @@ model CoverageChecklistItem {
 // ─────────────────────────────────────────────────────────────────────────
 
 model RbiCircular {
-  id                  String    @id @default(cuid())
-  title               String
-  sourceUrl           String    @unique
-  pdfUrl              String?
-  publishedDate       DateTime?
-  summary             String?
-  tags                String    // JSON string array: ["NBFC","CO_OP_BANK","SMALL_BANK","BANK"]
-  scrapedAt           DateTime  @default(now())
-  importedAsPolicyId  String?
+  id                     String    @id @default(cuid())
+  title                  String
+  sourceUrl              String    @unique
+  pdfUrl                 String?
+  publishedDate          DateTime?
+  summary                String?
+  tags                   String    // JSON string array: ["NBFC","CO_OP_BANK","SMALL_BANK","BANK"]
+  scrapedAt              DateTime  @default(now())
+  importedAsPolicyId     String?
+
+  // RBI's notification listing doesn't expose a structured compliance
+  // deadline — this is set manually by an Admin after reading the circular,
+  // so it can surface on the dashboard as "implement by".
+  implementationDeadline DateTime?
 }
 
 // ─────────────────────────────────────────────────────────────────────────

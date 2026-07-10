@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { coveragePercent } from "@/lib/coverage";
 import { getPendingConsent } from "@/lib/consent";
 import { getExpiringSoon } from "@/lib/policies";
+import { daysUntil } from "@/lib/dates";
 import { StatCard } from "@/components/StatCard";
 import { Badge } from "@/components/Badge";
 
@@ -36,6 +37,8 @@ export default async function AdminDashboard() {
     getPendingConsent(tenantId),
     getExpiringSoon(tenantId, 30),
   ]);
+
+  const latestRbi = await prisma.rbiCircular.findMany({ orderBy: { scrapedAt: "desc" }, take: 3 });
 
   return (
     <div>
@@ -96,6 +99,59 @@ export default async function AdminDashboard() {
             {recentPolicies.length === 0 && <li className="px-4 py-8 text-center text-sm text-slate-500">No policies yet.</li>}
           </ul>
         </div>
+      </div>
+
+      <div className="mt-8">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-900">Latest RBI notifications</h2>
+          <Link href="/admin/rbi" className="text-xs text-indigo-600 hover:underline">
+            View all →
+          </Link>
+        </div>
+        <ul className="mt-3 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
+          {latestRbi.map((c) => {
+            const tags = JSON.parse(c.tags) as string[];
+            const daysLeft = daysUntil(c.implementationDeadline);
+            return (
+              <li key={c.id} className="flex items-center justify-between gap-4 px-4 py-3">
+                <div className="min-w-0">
+                  <a href={c.sourceUrl} target="_blank" rel="noreferrer" className="font-medium text-indigo-700 hover:underline">
+                    {c.title}
+                  </a>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {c.publishedDate ? new Date(c.publishedDate).toLocaleDateString() : "Undated"} ·{" "}
+                    {tags.map((t) => (
+                      <span key={t} className="mr-1 rounded-full bg-slate-100 px-2 py-0.5">
+                        {t}
+                      </span>
+                    ))}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  {c.implementationDeadline ? (
+                    <span className={`text-xs font-medium ${daysLeft !== null && daysLeft <= 14 ? "text-red-600" : "text-amber-600"}`}>
+                      Implement by {new Date(c.implementationDeadline).toLocaleDateString()}
+                      {daysLeft !== null && daysLeft >= 0 ? ` (${daysLeft}d left)` : daysLeft !== null ? " (overdue)" : ""}
+                    </span>
+                  ) : (
+                    <Link href="/admin/rbi" className="text-xs text-slate-400 hover:text-indigo-600 hover:underline">
+                      Set deadline →
+                    </Link>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+          {latestRbi.length === 0 && (
+            <li className="px-4 py-8 text-center text-sm text-slate-500">
+              No RBI notifications scraped yet — visit{" "}
+              <Link href="/admin/rbi" className="text-indigo-600 hover:underline">
+                RBI Notifications
+              </Link>{" "}
+              and click &quot;Scrape now&quot;.
+            </li>
+          )}
+        </ul>
       </div>
     </div>
   );
