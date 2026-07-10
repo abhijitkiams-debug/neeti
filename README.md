@@ -36,10 +36,10 @@ Open http://localhost:3000. Seeded logins (see `prisma/seed.ts`):
 
 | Role | Login |
 |---|---|
-| Admin | `admin@acme.test` / `Password123!` |
-| Publisher (checker) | `publisher@acme.test` / `Password123!` |
-| Author (maker) | `author@acme.test` / `Password123!` |
-| Employee | `employee@acme.test` / `Password123!` |
+| Admin | `admin@acme.test` / `admin1234` |
+| Publisher (checker) | `publisher@acme.test` / `admin1234` |
+| Author (maker) | `author@acme.test` / `admin1234` |
+| Employee | `employee@acme.test` / `admin1234` |
 | Vendor Admin | mobile `9800000001`, OTP login |
 | Vendor User | mobile `9800000002`, OTP login |
 

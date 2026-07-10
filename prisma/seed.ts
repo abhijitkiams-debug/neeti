@@ -22,29 +22,29 @@ async function main() {
   );
   const [business, , collections] = families;
 
-  const pw = await hashPassword("Password123!");
+  const pw = await hashPassword("admin1234");
 
   const admin = await prisma.user.upsert({
     where: { tenantId_email: { tenantId: tenant.id, email: "admin@acme.test" } },
-    update: {},
+    update: { passwordHash: pw },
     create: { tenantId: tenant.id, email: "admin@acme.test", name: "Asha Admin", role: "ADMIN", passwordHash: pw, department: "Compliance", location: "Mumbai", grade: "M4", designation: "Head of Compliance" },
   });
 
   const publisher = await prisma.user.upsert({
     where: { tenantId_email: { tenantId: tenant.id, email: "publisher@acme.test" } },
-    update: {},
+    update: { passwordHash: pw },
     create: { tenantId: tenant.id, email: "publisher@acme.test", name: "Priya Publisher", role: "PUBLISHER", passwordHash: pw, department: "Compliance", location: "Mumbai", grade: "M3", designation: "Compliance Manager" },
   });
 
   const author = await prisma.user.upsert({
     where: { tenantId_email: { tenantId: tenant.id, email: "author@acme.test" } },
-    update: {},
+    update: { passwordHash: pw },
     create: { tenantId: tenant.id, email: "author@acme.test", name: "Arjun Author", role: "AUTHOR", passwordHash: pw, department: "Compliance", location: "Bengaluru", grade: "M2", designation: "Policy Author" },
   });
 
   const employee = await prisma.user.upsert({
     where: { tenantId_email: { tenantId: tenant.id, email: "employee@acme.test" } },
-    update: {},
+    update: { passwordHash: pw },
     create: { tenantId: tenant.id, email: "employee@acme.test", name: "Esha Employee", role: "EMPLOYEE", passwordHash: pw, department: "Collections", location: "Delhi", grade: "M1", designation: "Collections Officer" },
   });
 
@@ -114,6 +114,9 @@ async function main() {
     await prisma.policy.update({ where: { id: policy.id }, data: { currentVersionId: version.id } });
   }
 
+  const existingQuestionIds = (await prisma.quizQuestion.findMany({ where: { policyId: policy.id }, select: { id: true } })).map((q) => q.id);
+  await prisma.quizAssignment.deleteMany({ where: { questionId: { in: existingQuestionIds } } });
+  await prisma.quizOption.deleteMany({ where: { questionId: { in: existingQuestionIds } } });
   await prisma.quizQuestion.deleteMany({ where: { policyId: policy.id } });
   await prisma.quizQuestion.create({
     data: {
@@ -164,7 +167,7 @@ async function main() {
   }
 
   console.log("Seed complete.");
-  console.log("Employee logins (password: Password123!):");
+  console.log("Employee logins (password: admin1234):");
   console.log(`  Admin:     ${admin.email}`);
   console.log(`  Publisher: ${publisher.email}`);
   console.log(`  Author:    ${author.email}`);
