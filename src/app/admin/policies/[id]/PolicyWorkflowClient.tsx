@@ -44,6 +44,7 @@ export function PolicyWorkflowClient({ policyId, currentUserId, role }: { policy
   const [content, setContent] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [importUrl, setImportUrl] = useState("");
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/policies/${policyId}`);
@@ -119,6 +120,26 @@ export function PolicyWorkflowClient({ policyId, currentUserId, role }: { policy
     if (res.ok) await load();
   }
 
+  async function importFromLink() {
+    if (!importUrl.trim()) return;
+    setBusy(true);
+    setMessage(null);
+    const res = await fetch(`/api/policies/${policyId}/versions/${version!.id}/url-import`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: importUrl.trim() }),
+    });
+    setBusy(false);
+    if (res.ok) {
+      setImportUrl("");
+      setMessage("Content imported. Family, targeting, and title were left untouched.");
+      await load();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setMessage(typeof d.error === "string" ? d.error : "Import failed");
+    }
+  }
+
   return (
     <div className="max-w-4xl">
       <div className="flex items-start justify-between gap-4">
@@ -183,6 +204,19 @@ export function PolicyWorkflowClient({ policyId, currentUserId, role }: { policy
               Upload .pdf:{" "}
               <input type="file" accept=".pdf" className="text-xs" onChange={(e) => e.target.files?.[0] && uploadPdf(e.target.files[0])} />
             </label>
+            <span className="flex items-center gap-1.5 text-xs text-slate-500">
+              Import from link:{" "}
+              <input
+                type="url"
+                placeholder="Google Doc share link or public doc URL"
+                value={importUrl}
+                onChange={(e) => setImportUrl(e.target.value)}
+                className="w-64 rounded border border-slate-300 px-2 py-1 text-xs"
+              />
+              <button type="button" onClick={importFromLink} disabled={busy || !importUrl.trim()} className="rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+                Fetch
+              </button>
+            </span>
             <button
               onClick={() => call(`/api/policies/${policyId}/versions/${version.id}/submit`)}
               disabled={busy}

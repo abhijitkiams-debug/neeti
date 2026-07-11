@@ -12,7 +12,7 @@ export async function createPolicyWithDraft(params: {
   slug: string;
   authorId: string;
   contentHtml: string;
-  sourceType: "WYSIWYG" | "DOCX_IMPORT" | "PDF";
+  sourceType: "WYSIWYG" | "DOCX_IMPORT" | "PDF" | "URL_IMPORT";
   sourceFileUrl?: string;
 }) {
   return prisma.$transaction(async (tx) => {

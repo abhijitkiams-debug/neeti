@@ -15,6 +15,8 @@ export default function NewPolicyPage() {
   const [content, setContent] = useState("<p>Start writing your policy…</p>");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [importUrl, setImportUrl] = useState("");
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     fetch("/api/policy-families")
@@ -57,6 +59,53 @@ export default function NewPolicyPage() {
     router.push(`/admin/policies/${policy.id}`);
   }
 
+  async function onLinkImport() {
+    if (!importUrl.trim()) return;
+    setError(null);
+    setImporting(true);
+    const fallbackSlug =
+      slug ||
+      importUrl
+        .replace(/^https?:\/\//, "")
+        .split(/[/?#]/)[0]
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 60);
+    const createRes = await fetch("/api/policies", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ familyId, title: title || "Imported document", slug: fallbackSlug, contentHtml: "<p></p>" }),
+    });
+    if (!createRes.ok) {
+      setImporting(false);
+      setError("Could not create policy for import");
+      return;
+    }
+    const { policy, version } = await createRes.json();
+    const importRes = await fetch(`/api/policies/${policy.id}/versions/${version.id}/url-import`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: importUrl.trim() }),
+    });
+    if (!importRes.ok) {
+      setImporting(false);
+      const d = await importRes.json().catch(() => ({}));
+      setError(typeof d.error === "string" ? d.error : "Import failed");
+      return;
+    }
+    const { importedTitle } = await importRes.json();
+    if (!title.trim() && importedTitle) {
+      await fetch(`/api/policies/${policy.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: importedTitle }),
+      });
+    }
+    setImporting(false);
+    router.push(`/admin/policies/${policy.id}`);
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -92,6 +141,27 @@ export default function NewPolicyPage() {
             if (f) onDocxUpload(f);
           }}
         />
+        <p className="mt-3 text-slate-500">
+          Or fetch from a Google Doc (share link, &quot;Anyone with the link&quot;) or any other public document URL — stands in for a CRM/DMS
+          connector, which needs real OAuth credentials this environment doesn&apos;t have.
+        </p>
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            type="url"
+            placeholder="https://docs.google.com/document/d/..."
+            value={importUrl}
+            onChange={(e) => setImportUrl(e.target.value)}
+            className="w-80 rounded border border-slate-300 px-2 py-1.5 text-sm"
+          />
+          <button
+            type="button"
+            onClick={onLinkImport}
+            disabled={importing || !importUrl.trim()}
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          >
+            {importing ? "Fetching…" : "Fetch & create draft"}
+          </button>
+        </div>
       </div>
 
       <form onSubmit={onSubmit} className="mt-6 space-y-4 rounded-lg border border-slate-200 bg-white p-6">

@@ -21,7 +21,7 @@ export type VendorOrgStatus = (typeof VENDOR_ORG_STATUSES)[number];
 export const VENDOR_ROLES = ["VENDOR_ADMIN", "VENDOR_USER"] as const;
 export type VendorRole = (typeof VENDOR_ROLES)[number];
 
-export const SOURCE_TYPES = ["WYSIWYG", "DOCX_IMPORT", "PDF"] as const;
+export const SOURCE_TYPES = ["WYSIWYG", "DOCX_IMPORT", "PDF", "URL_IMPORT"] as const;
 export type SourceType = (typeof SOURCE_TYPES)[number];
 
 export const VERSION_STATUSES = [

@@ -13,6 +13,8 @@ type Question = {
 export function QuizManager({ policyId }: { policyId: string }) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [open, setOpen] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
   const [questionText, setQuestionText] = useState("");
   const [explanation, setExplanation] = useState("");
   const [sectionAnchor, setSectionAnchor] = useState("");
@@ -65,14 +67,37 @@ export function QuizManager({ policyId }: { policyId: string }) {
     await load();
   }
 
+  async function generateWithAi() {
+    setGenerating(true);
+    setGenError(null);
+    const res = await fetch("/api/quiz/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ policyId }),
+    });
+    setGenerating(false);
+    if (res.ok) {
+      await load();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setGenError(typeof d.error === "string" ? d.error : "AI generation failed");
+    }
+  }
+
   return (
     <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-slate-900">Micro-Quiz question bank ({questions.length})</h2>
-        <button onClick={() => setOpen((o) => !o)} className="text-sm text-indigo-600 hover:underline">
-          {open ? "Close" : "+ Add question"}
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={generateWithAi} disabled={generating} className="text-sm text-indigo-600 hover:underline disabled:opacity-50">
+            {generating ? "Generating…" : "✨ Generate with AI"}
+          </button>
+          <button onClick={() => setOpen((o) => !o)} className="text-sm text-indigo-600 hover:underline">
+            {open ? "Close" : "+ Add question"}
+          </button>
+        </div>
       </div>
+      {genError && <p className="mt-2 text-xs text-red-600">{genError}</p>}
 
       <ul className="mt-3 space-y-2">
         {questions.map((q) => (

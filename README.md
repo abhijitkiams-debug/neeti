@@ -159,6 +159,18 @@ works identically on Postgres.
 - Per-webview-open access log with request-level technical detail (IP, browser/OS, identity, timestamp) — `Admin → policy → Access logs`
 - Per-document report metrics panel (sent/read/unique users/total views/accept/helpful/questions + first-response day-bucket distribution)
 - Consumption webview action bar: Sign (attestation) / Helpful / Not Helpful / Ask a question, with an admin-side answer flow for questions
+- **Document import from an external URL** — a Google Docs share link (rewritten to
+  Google's HTML export endpoint) or any other public `.docx`/`.pdf`/HTML URL can be
+  fetched to seed a new draft or refresh an existing one (`src/lib/url-import.ts`,
+  `.../versions/[versionId]/url-import`). Only `contentHtml`/`sourceType`/`sourceFileUrl`
+  are ever touched — family, slug, and targeting rules are never overwritten by an
+  import. Stands in for a real CRM/DMS OAuth connector (Google Drive folder sync,
+  SharePoint, etc.), which needs credentials this environment doesn't have.
+- **AI-generated micro-quiz questions** — "✨ Generate with AI" on the question bank
+  (`src/lib/ai.ts`, `POST /api/quiz/generate`) calls the Claude API with a forced tool
+  call to draft 4 MCQ questions from the policy's current content. Pluggable via
+  `ANTHROPIC_API_KEY`: unset, the button returns a clear "not configured" message
+  instead of failing silently — same pattern as `NotificationAdapter`.
 
 **Intentionally stubbed / documented limitations:**
 - **AD/SAML SSO** — see [above](#auth--the-ad--sso-swap-point); explicitly out of scope for this build
@@ -178,7 +190,6 @@ works identically on Postgres.
 - **TLS / at-rest encryption** are infrastructure-layer concerns (load
   balancer + managed Postgres disk encryption in production) — not something
   an application-layer scaffold enforces itself
-- **AI-generated quiz questions** — explicitly Phase 2 per the request; question authoring is manual in this build
 
 ## Scheduled jobs
 
