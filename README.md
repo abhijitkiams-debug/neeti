@@ -17,7 +17,7 @@ be exercised end-to-end without an external identity provider.
   [Switching to Postgres](#switching-to-postgres) for production)
 - **Tailwind CSS 4** for styling
 - **Tiptap** for the WYSIWYG article editor
-- **mammoth** for .docx → HTML conversion
+- **mammoth** for .docx → HTML conversion, **word-extractor** for legacy .doc text extraction
 - **react-pdf** (self-hosted pdf.js worker) for the built-in PDF viewer
 - **cheerio** for the RBI notifications scraper
 - JWT session cookies (no external auth provider) via `jsonwebtoken` + `bcryptjs`
@@ -143,7 +143,9 @@ works identically on Postgres.
 **Fully working, real implementations:**
 - Vendor org + vendor-user registry, CSV/XLSX bulk upload, org-cascade deactivation
 - Vendor mobile-OTP login and OTP-based attestation re-verification
-- WYSIWYG editor (Tiptap), `.docx` → HTML import (mammoth), `.pdf` upload + built-in viewer (react-pdf)
+- WYSIWYG editor (Tiptap), `.docx` → HTML import (mammoth), legacy `.doc` → HTML import
+  (word-extractor; plain text only — no formatting/tables/images, unlike the richer `.docx` path),
+  `.pdf` upload + built-in viewer (react-pdf)
 - Single-level maker-checker approval workflow (maker ≠ checker enforced)
 - Attribute-based + named-individual + custom-list targeting, with a live audience preview
 - Publish / recall / resend-all / remind-unread-only / expiry / version history

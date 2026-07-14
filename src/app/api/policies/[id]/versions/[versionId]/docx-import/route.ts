@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireEmployee } from "@/lib/auth";
 import { apiError } from "@/lib/api";
-import { convertDocxToHtml } from "@/lib/docx";
+import { convertDocxToHtml, convertDocToHtml } from "@/lib/docx";
 import { saveUpload } from "@/lib/storage";
 
 export async function POST(req: Request, { params }: { params: Promise<{ versionId: string }> }) {
@@ -19,12 +19,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ version
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
-    if (!file || !file.name.toLowerCase().endsWith(".docx")) {
-      return NextResponse.json({ error: "A .docx file is required" }, { status: 400 });
+    const name = file?.name.toLowerCase() ?? "";
+    if (!file || (!name.endsWith(".docx") && !name.endsWith(".doc"))) {
+      return NextResponse.json({ error: "A .doc or .docx file is required" }, { status: 400 });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const { html, warnings } = await convertDocxToHtml(buffer);
+    let html: string, warnings: string[];
+    try {
+      ({ html, warnings } = name.endsWith(".docx") ? await convertDocxToHtml(buffer) : await convertDocToHtml(buffer));
+    } catch {
+      return NextResponse.json({ error: "Could not read this file — it doesn't look like a valid Word document." }, { status: 400 });
+    }
     const sourceFileUrl = await saveUpload("policy-docx", file.name, buffer);
 
     const updated = await prisma.policyVersion.update({

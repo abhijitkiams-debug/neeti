@@ -197,8 +197,8 @@ export function PolicyWorkflowClient({ policyId, currentUserId, role }: { policy
               Save draft
             </button>
             <label className="text-xs text-slate-500">
-              Upload .docx:{" "}
-              <input type="file" accept=".docx" className="text-xs" onChange={(e) => e.target.files?.[0] && uploadDocx(e.target.files[0])} />
+              Upload .doc/.docx:{" "}
+              <input type="file" accept=".docx,.doc" className="text-xs" onChange={(e) => e.target.files?.[0] && uploadDocx(e.target.files[0])} />
             </label>
             <label className="text-xs text-slate-500">
               Upload .pdf:{" "}

@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import { convertDocxToHtml } from "./docx";
+import { convertDocxToHtml, convertDocToHtml } from "./docx";
 
 /**
  * Fetches an externally-hosted document and normalizes it into content this
@@ -63,6 +63,13 @@ export async function importFromUrl(inputUrl: string): Promise<ImportedDocument>
     const buffer = Buffer.from(await res.arrayBuffer());
     const { html, warnings } = await convertDocxToHtml(buffer);
     const fileName = lastSegment.toLowerCase().endsWith(".docx") ? lastSegment : `${lastSegment}.docx`;
+    return { kind: "docx", html, warnings, buffer, fileName };
+  }
+
+  if (contentType.includes("application/msword") || fetchUrl.toLowerCase().endsWith(".doc")) {
+    const buffer = Buffer.from(await res.arrayBuffer());
+    const { html, warnings } = await convertDocToHtml(buffer);
+    const fileName = lastSegment.toLowerCase().endsWith(".doc") ? lastSegment : `${lastSegment}.doc`;
     return { kind: "docx", html, warnings, buffer, fileName };
   }
 

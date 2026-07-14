@@ -131,10 +131,10 @@ export default function NewPolicyPage() {
 
       <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-white p-4 text-sm">
         <p className="font-medium text-slate-700">Or pull in an existing document</p>
-        <p className="mt-1 text-slate-500">Upload a .docx file — it will be auto-converted to a web article you can refine below.</p>
+        <p className="mt-1 text-slate-500">Upload a .doc or .docx file — it will be auto-converted to a web article you can refine below.</p>
         <input
           type="file"
-          accept=".docx"
+          accept=".docx,.doc"
           className="mt-2 text-sm"
           onChange={(e) => {
             const f = e.target.files?.[0];
