@@ -276,6 +276,28 @@ async function main() {
       { kind: "VENDOR_ATTRIBUTE", attribute: "vendorOrg", values: allVendorOrgIds },
     ],
   });
+  await addQuizQuestions(fpc.id, [
+    {
+      text: "What is the earliest time a borrower may be contacted for recovery under the Fair Practices Code?",
+      explanation: "The FPC prohibits borrower contact before 0700 hrs.",
+      options: [
+        { text: "0700 hrs", isCorrect: true },
+        { text: "0500 hrs", isCorrect: false },
+        { text: "0900 hrs", isCorrect: false },
+        { text: "There is no restriction", isCorrect: false },
+      ],
+    },
+    {
+      text: "Which of these is a key commitment under the Fair Practices Code?",
+      explanation: "The FPC requires a documented grievance redressal mechanism, among other borrower protections.",
+      options: [
+        { text: "A documented grievance redressal mechanism", isCorrect: true },
+        { text: "Discretion to omit loan terms for repeat borrowers", isCorrect: false },
+        { text: "Use of intimidation only as a last resort", isCorrect: false },
+        { text: "Contact borrowers at any hour if urgent", isCorrect: false },
+      ],
+    },
+  ]);
   if (fpcVersion.publishedAt) {
     await seedEngagement(fpcVersion.id, fpcVersion.publishedAt, [
       { userId: employee.id }, { vendorUserId: vendorAdmin.id }, { vendorUserId: vendorUser.id }, { vendorUserId: swiftAdmin.id }, { vendorUserId: swiftUser.id },
@@ -291,6 +313,28 @@ async function main() {
     targetRules: [{ kind: "VENDOR_ATTRIBUTE", attribute: "vendorOrg", values: allVendorOrgIds }],
     expiresAt: daysFromNow(18),
   });
+  await addQuizQuestions(recoveryAgentCode.id, [
+    {
+      text: "What must a recovery agent always carry when visiting a borrower?",
+      explanation: "Agents must always carry and present their authorization letter and ID card.",
+      options: [
+        { text: "Their authorization letter and ID card", isCorrect: true },
+        { text: "A copy of the borrower's credit report", isCorrect: false },
+        { text: "Nothing — verbal introduction is sufficient", isCorrect: false },
+        { text: "A company visiting card only", isCorrect: false },
+      ],
+    },
+    {
+      text: "What should a recovery agent do when a dispute arises during a visit?",
+      explanation: "The Code requires agents to escalate disputes rather than engaging in confrontation.",
+      options: [
+        { text: "Escalate the dispute rather than confront the borrower", isCorrect: true },
+        { text: "Resolve it on the spot using firm persuasion", isCorrect: false },
+        { text: "Return later that night to try again", isCorrect: false },
+        { text: "Involve neighbors to pressure the borrower", isCorrect: false },
+      ],
+    },
+  ]);
   if (racVersion.publishedAt) {
     await seedEngagement(racVersion.id, racVersion.publishedAt, [
       { vendorUserId: vendorAdmin.id }, { vendorUserId: vendorUser.id }, { vendorUserId: swiftAdmin.id }, { vendorUserId: swiftUser.id }, { vendorUserId: dsaAdmin.id }, { vendorUserId: dsaUser.id },
@@ -316,6 +360,28 @@ async function main() {
     targetState: "PUBLISHED",
     targetRules: [{ kind: "EMPLOYEE_ATTRIBUTE", attribute: "department", values: DEPARTMENTS }],
   });
+  await addQuizQuestions(leavePolicy.id, [
+    {
+      text: "How many days of privilege leave does an employee accrue per year?",
+      explanation: "The Leave & Attendance Policy grants 18 days of privilege leave per year, accrued monthly.",
+      options: [
+        { text: "18 days", isCorrect: true },
+        { text: "12 days", isCorrect: false },
+        { text: "24 days", isCorrect: false },
+        { text: "30 days", isCorrect: false },
+      ],
+    },
+    {
+      text: "How many weeks of maternity leave are employees entitled to?",
+      explanation: "The policy provides 26 weeks of maternity leave.",
+      options: [
+        { text: "26 weeks", isCorrect: true },
+        { text: "12 weeks", isCorrect: false },
+        { text: "16 weeks", isCorrect: false },
+        { text: "8 weeks", isCorrect: false },
+      ],
+    },
+  ]);
   if (leaveVersion.publishedAt) {
     await seedEngagement(leaveVersion.id, leaveVersion.publishedAt, [
       { userId: employee.id }, { userId: rohan.id }, { userId: priyanka.id }, { userId: kabir.id }, { userId: neha.id }, { userId: vivek.id }, { userId: divya.id },
