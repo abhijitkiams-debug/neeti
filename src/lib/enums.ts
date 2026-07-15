@@ -86,3 +86,33 @@ export const VENDOR_TARGET_ATTRIBUTES = [
 
 export const RBI_TAGS = ["NBFC", "CO_OP_BANK", "SMALL_FINANCE_BANK", "BANK", "OTHER"] as const;
 export type RbiTag = (typeof RBI_TAGS)[number];
+
+// The 22 languages of the Eighth Schedule of the Constitution of India,
+// plus English (the authoring-language default, code "en"). Codes are
+// ISO 639-1 where one exists, else a common ISO 639-2/3 code.
+export const LANGUAGES = [
+  { code: "en", englishName: "English", nativeName: "English" },
+  { code: "as", englishName: "Assamese", nativeName: "অসমীয়া" },
+  { code: "bn", englishName: "Bengali", nativeName: "বাংলা" },
+  { code: "brx", englishName: "Bodo", nativeName: "बड़ो" },
+  { code: "doi", englishName: "Dogri", nativeName: "डोगरी" },
+  { code: "gu", englishName: "Gujarati", nativeName: "ગુજરાતી" },
+  { code: "hi", englishName: "Hindi", nativeName: "हिन्दी" },
+  { code: "kn", englishName: "Kannada", nativeName: "ಕನ್ನಡ" },
+  { code: "ks", englishName: "Kashmiri", nativeName: "کٲشُر" },
+  { code: "kok", englishName: "Konkani", nativeName: "कोंकणी" },
+  { code: "mai", englishName: "Maithili", nativeName: "मैथिली" },
+  { code: "ml", englishName: "Malayalam", nativeName: "മലയാളം" },
+  { code: "mni", englishName: "Manipuri (Meitei)", nativeName: "ꯃꯩꯇꯩꯂꯣꯟ" },
+  { code: "mr", englishName: "Marathi", nativeName: "मराठी" },
+  { code: "ne", englishName: "Nepali", nativeName: "नेपाली" },
+  { code: "or", englishName: "Odia", nativeName: "ଓଡ଼ିଆ" },
+  { code: "pa", englishName: "Punjabi", nativeName: "ਪੰਜਾਬੀ" },
+  { code: "sa", englishName: "Sanskrit", nativeName: "संस्कृतम्" },
+  { code: "sat", englishName: "Santali", nativeName: "ᱥᱟᱱᱛᱟᱲᱤ" },
+  { code: "sd", englishName: "Sindhi", nativeName: "سنڌي" },
+  { code: "ta", englishName: "Tamil", nativeName: "தமிழ்" },
+  { code: "te", englishName: "Telugu", nativeName: "తెలుగు" },
+  { code: "ur", englishName: "Urdu", nativeName: "اردو" },
+] as const;
+export type LanguageCode = (typeof LANGUAGES)[number]["code"];

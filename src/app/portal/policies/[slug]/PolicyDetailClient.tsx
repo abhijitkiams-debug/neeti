@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { LANGUAGES } from "@/lib/enums";
 
 // pdfjs-dist crashes at module-evaluation time under the webpack dev
 // compiler if imported eagerly, which would break every policy page (not
@@ -21,6 +22,8 @@ type PolicyData = {
     sourceType: string;
     sourceFileUrl: string | null;
   };
+  language: string;
+  availableLanguages: string[];
   hasRead: boolean;
   hasAttested: boolean;
   starred: boolean;
@@ -41,14 +44,18 @@ export function PolicyDetailClient({
 }) {
   const [data, setData] = useState<PolicyData | null>(null);
   const [starred, setStarred] = useState(false);
+  const [lang, setLang] = useState("en");
 
   useEffect(() => {
-    fetch(`/api/consumption/policies/${slug}`)
+    fetch(`/api/consumption/policies/${slug}${lang !== "en" ? `?lang=${lang}` : ""}`)
       .then((r) => r.json())
       .then((d: PolicyData) => {
         setData(d);
         setStarred(d.starred);
       });
+  }, [slug, lang]);
+
+  useEffect(() => {
     fetch(`/api/consumption/policies/${slug}/read`, { method: "POST" });
   }, [slug]);
 
@@ -71,14 +78,29 @@ export function PolicyDetailClient({
             </p>
           )}
         </div>
-        <button
-          onClick={toggleStar}
-          className={`shrink-0 rounded-md border px-3 py-1.5 text-sm font-medium ${
-            starred ? "border-amber-300 bg-amber-50 text-amber-700" : "border-slate-300 text-slate-600 hover:bg-slate-50"
-          }`}
-        >
-          {starred ? "★ Starred" : "☆ Star"}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          {data && data.availableLanguages.length > 1 && (
+            <select
+              value={lang}
+              onChange={(e) => setLang(e.target.value)}
+              className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            >
+              {LANGUAGES.filter((l) => data.availableLanguages.includes(l.code)).map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.nativeName === l.englishName ? l.englishName : `${l.nativeName} (${l.englishName})`}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            onClick={toggleStar}
+            className={`rounded-md border px-3 py-1.5 text-sm font-medium ${
+              starred ? "border-amber-300 bg-amber-50 text-amber-700" : "border-slate-300 text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            {starred ? "★ Starred" : "☆ Star"}
+          </button>
+        </div>
       </div>
 
       <div className="mt-6 rounded-lg border border-slate-200 bg-white p-6">

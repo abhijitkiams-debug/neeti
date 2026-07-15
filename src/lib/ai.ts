@@ -106,3 +106,38 @@ export async function generateQuizQuestions(params: { title: string; contentHtml
   const questions = input.questions ?? [];
   return questions.filter((q) => q.questionText && q.options?.some((o) => o.isCorrect) && q.options.length >= 2);
 }
+
+/**
+ * Translates a policy version's HTML into the target language via the
+ * Claude API, preserving tag structure so the WYSIWYG editor and the
+ * consumption portal can render it exactly like the original. Plain text
+ * completion rather than a tool call — the "structure" we need back is the
+ * HTML itself, not a JSON shape.
+ */
+export async function translatePolicyContent(params: { contentHtml: string; targetLanguageName: string }): Promise<string> {
+  if (!isAiConfigured()) {
+    throw new Error("ANTHROPIC_API_KEY is not configured — AI translation is unavailable in this environment.");
+  }
+  if (stripHtml(params.contentHtml).trim().length < 10) {
+    throw new Error("This policy has too little content to translate — write the policy body first.");
+  }
+
+  const client = new Anthropic();
+  const response = await client.messages.create({
+    model: "claude-opus-4-8",
+    max_tokens: 8192,
+    system:
+      `You translate corporate policy documents into ${params.targetLanguageName} for compliance purposes. ` +
+      "You will be given an HTML fragment. Translate only the human-readable text content into the target " +
+      "language; leave every HTML tag, attribute, and attribute value exactly as-is. Preserve the exact tag " +
+      "structure and nesting. Do not add, remove, or reorder elements. Respond with only the translated HTML " +
+      "fragment — no commentary, no markdown code fences, no explanation.",
+    messages: [{ role: "user", content: params.contentHtml }],
+  });
+
+  const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === "text");
+  if (!textBlock || !textBlock.text.trim()) {
+    throw new Error("The AI did not return a translation — try again.");
+  }
+  return textBlock.text.trim().replace(/^```(?:html)?\n?/, "").replace(/\n?```$/, "");
+}

@@ -79,6 +79,7 @@ model User {
   policyFeedback     PolicyFeedback[]
   questionsAsked     PolicyQuestion[] @relation("QuestionAskedBy")
   questionsAnswered  PolicyQuestion[] @relation("QuestionAnsweredBy")
+  policyTranslations PolicyTranslation[]
 
   @@unique([tenantId, email])
   @@index([tenantId, department])
@@ -247,8 +248,29 @@ model PolicyVersion {
   accessLogs       AccessLog[]
   policyFeedback   PolicyFeedback[]
   questions        PolicyQuestion[]
+  translations     PolicyTranslation[]
 
   @@unique([policyId, versionNumber])
+}
+
+// One row per (version, language) holding a translated copy of
+// contentHtml. The version's own contentHtml is the authoring-language
+// original; this table only holds additional languages, selected via the
+// language picker — either machine-translated (see lib/ai.ts) or
+// hand-written/pasted by an author.
+model PolicyTranslation {
+  id                String        @id @default(cuid())
+  policyVersionId   String
+  policyVersion     PolicyVersion @relation(fields: [policyVersionId], references: [id])
+  languageCode      String        // see LANGUAGES in src/lib/enums.ts
+  contentHtml       String
+  machineTranslated Boolean       @default(false)
+  createdById       String
+  createdBy         User          @relation(fields: [createdById], references: [id])
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@unique([policyVersionId, languageCode])
 }
 
 model ApprovalAction {

@@ -9,6 +9,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
   try {
     const session = await requireSession();
     const { slug } = await params;
+    const url = new URL(req.url);
+    const lang = url.searchParams.get("lang");
 
     const policy = await prisma.policy.findFirst({
       where: { slug },
@@ -20,10 +22,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
     if (!visibleIds.includes(policy.id)) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const { userId, vendorUserId } = sessionIdentity(session);
-    const [readReceipt, attestation, star] = await Promise.all([
+    const [readReceipt, attestation, star, translations] = await Promise.all([
       prisma.readReceipt.findFirst({ where: { policyVersionId: policy.currentVersionId, userId, vendorUserId } }),
       prisma.attestation.findFirst({ where: { policyVersionId: policy.currentVersionId, userId, vendorUserId } }),
       prisma.star.findFirst({ where: { policyId: policy.id, userId, vendorUserId } }),
+      prisma.policyTranslation.findMany({ where: { policyVersionId: policy.currentVersionId }, select: { languageCode: true, contentHtml: true } }),
     ]);
 
     await prisma.accessLog.create({
@@ -36,13 +39,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
       },
     });
 
+    const selected = lang && lang !== "en" ? translations.find((t) => t.languageCode === lang) : undefined;
+
     return NextResponse.json({
       policy: {
         id: policy.id,
         slug: policy.slug,
         title: policy.title,
         family: policy.family.name,
-        contentHtml: policy.currentVersion!.contentHtml,
+        contentHtml: selected ? selected.contentHtml : policy.currentVersion!.contentHtml,
         versionNumber: policy.currentVersion!.versionNumber,
         versionId: policy.currentVersionId,
         publishedAt: policy.currentVersion!.publishedAt,
@@ -50,6 +55,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
         sourceType: policy.currentVersion!.sourceType,
         sourceFileUrl: policy.currentVersion!.sourceFileUrl,
       },
+      language: selected ? lang : "en",
+      availableLanguages: ["en", ...translations.map((t) => t.languageCode)],
       hasRead: !!readReceipt,
       hasAttested: !!attestation,
       starred: !!star,

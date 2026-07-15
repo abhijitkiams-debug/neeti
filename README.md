@@ -173,6 +173,15 @@ works identically on Postgres.
   call to draft 4 MCQ questions from the policy's current content. Pluggable via
   `ANTHROPIC_API_KEY`: unset, the button returns a clear "not configured" message
   instead of failing silently — same pattern as `NotificationAdapter`.
+- **Language selector for translated content** — a language picker (all 22 Eighth
+  Schedule languages + English) on both the admin policy editor and the consumption
+  portal. Authors write/paste a translation per language (`PolicyTranslation`, one row
+  per version+language) or click "✨ Generate with AI" to machine-translate the current
+  English content via the Claude API (same `ANTHROPIC_API_KEY` gate as the quiz
+  generator — degrades to a clear message when unset). Readers only see languages that
+  actually have a saved translation; the portal falls back to the English original
+  otherwise. Translations are editorial/supplementary — they don't go through the
+  maker-checker approval flow the base English content does.
 
 **Intentionally stubbed / documented limitations:**
 - **AD/SAML SSO** — see [above](#auth--the-ad--sso-swap-point); explicitly out of scope for this build

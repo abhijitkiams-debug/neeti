@@ -8,6 +8,9 @@ import { TargetingEditor, type TargetRule } from "./TargetingEditor";
 import { QuizManager } from "./QuizManager";
 import { EngagementMetrics } from "./EngagementMetrics";
 import { QuestionsPanel } from "./QuestionsPanel";
+import { LANGUAGES } from "@/lib/enums";
+
+type Translation = { languageCode: string; contentHtml: string; machineTranslated: boolean };
 
 type Version = {
   id: string;
@@ -45,6 +48,9 @@ export function PolicyWorkflowClient({ policyId, currentUserId, role }: { policy
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [importUrl, setImportUrl] = useState("");
+  const [lang, setLang] = useState("en");
+  const [translations, setTranslations] = useState<Translation[]>([]);
+  const [translating, setTranslating] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/policies/${policyId}`);
@@ -61,9 +67,26 @@ export function PolicyWorkflowClient({ policyId, currentUserId, role }: { policy
 
   const version = policy?.versions.find((v) => v.id === selectedVersionId) ?? policy?.versions[0];
 
+  const loadTranslations = useCallback(async (versionId: string) => {
+    const res = await fetch(`/api/policies/${policyId}/versions/${versionId}/translations`);
+    if (res.ok) setTranslations((await res.json()).translations);
+  }, [policyId]);
+
   useEffect(() => {
-    if (version) setContent(version.contentHtml);
+    if (!version) return;
+    setLang("en");
+    setContent(version.contentHtml);
+    loadTranslations(version.id);
   }, [version?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!version) return;
+    if (lang === "en") {
+      setContent(version.contentHtml);
+    } else {
+      setContent(translations.find((t) => t.languageCode === lang)?.contentHtml ?? "<p></p>");
+    }
+  }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!policy || !version) return <p className="text-sm text-slate-500">Loading…</p>;
 
@@ -90,15 +113,47 @@ export function PolicyWorkflowClient({ policyId, currentUserId, role }: { policy
 
   async function saveContent() {
     setBusy(true);
-    const res = await fetch(`/api/policies/${policyId}/versions/${version!.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contentHtml: content }),
-    });
+    setMessage(null);
+    const res =
+      lang === "en"
+        ? await fetch(`/api/policies/${policyId}/versions/${version!.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contentHtml: content }),
+          })
+        : await fetch(`/api/policies/${policyId}/versions/${version!.id}/translations`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ languageCode: lang, contentHtml: content }),
+          });
     setBusy(false);
     if (res.ok) {
       setMessage("Saved.");
       await load();
+      await loadTranslations(version!.id);
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setMessage(typeof d.error === "string" ? d.error : "Save failed");
+    }
+  }
+
+  async function generateTranslation() {
+    setTranslating(true);
+    setMessage(null);
+    const res = await fetch(`/api/policies/${policyId}/versions/${version!.id}/translations/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ languageCode: lang }),
+    });
+    setTranslating(false);
+    if (res.ok) {
+      const { translation } = await res.json();
+      setContent(translation.contentHtml);
+      await loadTranslations(version!.id);
+      setMessage("Translated with AI — review and save.");
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setMessage(typeof d.error === "string" ? d.error : "Translation failed");
     }
   }
 
@@ -175,12 +230,39 @@ export function PolicyWorkflowClient({ policyId, currentUserId, role }: { policy
         </select>
         <Badge status={version.status} />
         <span className="text-xs text-slate-500">by {version.author.name}</span>
+        <select
+          value={lang}
+          onChange={(e) => setLang(e.target.value)}
+          className="ml-auto rounded-md border border-slate-300 px-2 py-1 text-sm"
+        >
+          {LANGUAGES.map((l) => (
+            <option key={l.code} value={l.code}>
+              {l.nativeName === l.englishName ? l.englishName : `${l.nativeName} (${l.englishName})`}
+              {l.code !== "en" && translations.some((t) => t.languageCode === l.code) ? " ✓" : ""}
+            </option>
+          ))}
+        </select>
       </div>
 
       {message && <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">{message}</p>}
 
       <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
-        {version.sourceType === "PDF" && version.sourceFileUrl ? (
+        {lang !== "en" && (
+          <div className="mb-3 flex items-center justify-between rounded-md bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
+            <span>
+              Viewing the <strong>{LANGUAGES.find((l) => l.code === lang)?.englishName}</strong> translation.
+              {translations.find((t) => t.languageCode === lang)?.machineTranslated && " (AI-translated — review before relying on it.)"}
+              {!translations.some((t) => t.languageCode === lang) && " No translation saved yet."}
+            </span>
+            {CAN_AUTHOR.includes(role) && (
+              <button onClick={generateTranslation} disabled={translating} className="shrink-0 font-medium text-indigo-700 hover:underline disabled:opacity-50">
+                {translating ? "Translating…" : "✨ Generate with AI"}
+              </button>
+            )}
+          </div>
+        )}
+
+        {version.sourceType === "PDF" && version.sourceFileUrl && lang === "en" ? (
           <p className="text-sm text-slate-600">
             PDF-sourced version.{" "}
             <a href={version.sourceFileUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">
@@ -188,10 +270,18 @@ export function PolicyWorkflowClient({ policyId, currentUserId, role }: { policy
             </a>
           </p>
         ) : (
-          <WysiwygEditor content={content} onChange={setContent} editable={isEditable && CAN_AUTHOR.includes(role)} />
+          <WysiwygEditor content={content} onChange={setContent} editable={lang === "en" ? isEditable && CAN_AUTHOR.includes(role) : CAN_AUTHOR.includes(role)} />
         )}
 
-        {isEditable && CAN_AUTHOR.includes(role) && (
+        {lang !== "en" && CAN_AUTHOR.includes(role) && (
+          <div className="mt-3">
+            <button onClick={saveContent} disabled={busy} className="rounded-md bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-60">
+              Save translation
+            </button>
+          </div>
+        )}
+
+        {lang === "en" && isEditable && CAN_AUTHOR.includes(role) && (
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <button onClick={saveContent} disabled={busy} className="rounded-md bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-60">
               Save draft

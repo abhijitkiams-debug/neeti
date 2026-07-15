@@ -45,6 +45,14 @@ export function WysiwygEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content]);
 
+  // useEditor's `editable` option is only read at construction — it doesn't
+  // react to later prop changes on its own, so a caller that toggles
+  // `editable` after mount (e.g. switching the language being edited) needs
+  // this to actually take effect.
+  useEffect(() => {
+    editor?.setEditable(editable);
+  }, [editor, editable]);
+
   if (!editor) return null;
 
   const btn = (active: boolean) =>
