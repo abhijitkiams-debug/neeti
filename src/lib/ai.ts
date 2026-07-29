@@ -141,3 +141,52 @@ export async function translatePolicyContent(params: { contentHtml: string; targ
   }
   return textBlock.text.trim().replace(/^```(?:html)?\n?/, "").replace(/\n?```$/, "");
 }
+
+/**
+ * Drafts an internal company policy that operationalizes an RBI regulatory
+ * circular, via the Claude API. Only the circular's title/summary/tags are
+ * available (the RBI notification listing doesn't expose full circular
+ * text — see lib/rbi-scraper.ts), so this is explicitly a starting draft
+ * an Author must review against the actual circular PDF, not a substitute
+ * for reading it — the output says so.
+ */
+export async function draftPolicyFromCircular(params: {
+  title: string;
+  summary: string | null;
+  tags: string[];
+  publishedDate: string | null;
+  sourceUrl: string;
+}): Promise<string> {
+  if (!isAiConfigured()) {
+    throw new Error("ANTHROPIC_API_KEY is not configured — AI-assisted drafting is unavailable in this environment.");
+  }
+
+  const client = new Anthropic();
+  const response = await client.messages.create({
+    model: "claude-opus-4-8",
+    max_tokens: 4096,
+    system:
+      "You are a compliance policy author at an Indian NBFC/financial institution. Given an RBI regulatory " +
+      "circular's title and summary, draft a first-pass INTERNAL COMPANY POLICY that operationalizes it — i.e. " +
+      "what the company's own staff and vendors must do to comply, not a restatement of the circular itself. " +
+      "Only the circular's title and a short summary are available, not its full text, so: write generic, " +
+      "reasonable, industry-standard compliance controls for a policy on this topic, and be explicit that this " +
+      "is a starting draft requiring review against the actual circular PDF before approval — do not invent " +
+      "specific numeric thresholds, deadlines, or clauses as if they were confirmed to be in the circular. " +
+      "Respond with only an HTML fragment using <h2> section headings (Purpose, Scope, Key Requirements, " +
+      "Roles & Responsibilities, Review) and <p>/<ul>/<li> body content — no commentary, no markdown code fences, " +
+      "no <html>/<body> wrapper.",
+    messages: [
+      {
+        role: "user",
+        content: `RBI circular title: ${params.title}\nPublished: ${params.publishedDate ?? "unknown date"}\nCategory tags: ${params.tags.join(", ") || "none"}\nSummary: ${params.summary ?? "(no summary available — RBI's notification listing only exposes titles)"}\nSource: ${params.sourceUrl}\n\nDraft the internal policy.`,
+      },
+    ],
+  });
+
+  const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === "text");
+  if (!textBlock || !textBlock.text.trim()) {
+    throw new Error("The AI did not return a draft — try again.");
+  }
+  return textBlock.text.trim().replace(/^```(?:html)?\n?/, "").replace(/\n?```$/, "");
+}

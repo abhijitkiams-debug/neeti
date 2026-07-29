@@ -4,12 +4,14 @@ import { prisma } from "@/lib/prisma";
 import { requireEmployee } from "@/lib/auth";
 import { apiError } from "@/lib/api";
 import { createPolicyWithDraft } from "@/lib/policies";
+import { draftPolicyFromCircular, isAiConfigured } from "@/lib/ai";
 
 const schema = z.object({ familyId: z.string().min(1) });
 
 // Imports an RBI circular as the starting draft of a new internal policy —
-// the author still needs to review the source PDF and write the actual
-// internal policy content; this just saves the "find + summarize + create draft" step.
+// the author still needs to review the source PDF against the AI-drafted
+// (or, without ANTHROPIC_API_KEY, placeholder) content before submitting
+// for approval; this just saves the "find + draft + create" step.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await requireEmployee(["AUTHOR", "ADMIN"]);
@@ -23,15 +25,34 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
       .slice(0, 60);
+    const tags = JSON.parse(circular.tags) as string[];
 
-    const contentHtml = `
-      <p><em>Drafted from an RBI notification. Review the source circular and replace this
-      with your organization's internal policy content before submitting for approval.</em></p>
+    let draftBody: string;
+    let aiDrafted = false;
+    if (isAiConfigured()) {
+      try {
+        draftBody = await draftPolicyFromCircular({
+          title: circular.title,
+          summary: circular.summary,
+          tags,
+          publishedDate: circular.publishedDate?.toDateString() ?? null,
+          sourceUrl: circular.sourceUrl,
+        });
+        aiDrafted = true;
+      } catch {
+        draftBody = `<p><em>AI drafting failed — review the source circular and write the internal policy content before submitting for approval.</em></p><p>${circular.summary ?? ""}</p>`;
+      }
+    } else {
+      draftBody = `<p><em>AI-assisted drafting isn't configured (set ANTHROPIC_API_KEY) — review the source circular and replace this with your organization's internal policy content before submitting for approval.</em></p><p>${circular.summary ?? ""}</p>`;
+    }
+
+    const sourceBlock = `
       <p><strong>Source:</strong> <a href="${circular.sourceUrl}" target="_blank" rel="noopener">${circular.title}</a></p>
       ${circular.pdfUrl ? `<p><strong>Circular PDF:</strong> <a href="${circular.pdfUrl}" target="_blank" rel="noopener">${circular.pdfUrl}</a></p>` : ""}
       <p><strong>Published:</strong> ${circular.publishedDate?.toDateString() ?? "Unknown"}</p>
-      <p>${circular.summary ?? ""}</p>
     `.trim();
+
+    const contentHtml = `${draftBody}${sourceBlock}`;
 
     const { policy, version } = await createPolicyWithDraft({
       tenantId: session.tenantId,
@@ -45,7 +66,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     await prisma.rbiCircular.update({ where: { id }, data: { importedAsPolicyId: policy.id } });
 
-    return NextResponse.json({ policy, version }, { status: 201 });
+    return NextResponse.json({ policy, version, aiDrafted }, { status: 201 });
   } catch (e) {
     return apiError(e);
   }

@@ -154,7 +154,7 @@ works identically on Postgres.
 - Read receipts, attestation dashboard (employee vs. vendor split, per-vendor-org drill-down), CSV export
 - Daily Micro-Quiz: shuffled question/option order, instant feedback, deep link back to the policy section, per-user/per-team scoring
 - Policy Coverage Checklist, seeded with the 30-item Collections & Recovery template (Appendix A), live status derived from linked policies, coverage %
-- **RBI notifications scraper is live** — it fetches and parses `rbi.org.in`'s actual notification list, tags NBFC/Co-operative Bank/Small Finance Bank/Bank by keyword heuristics, and can import a circular as a draft policy starting point
+- **RBI notifications scraper is live** — it fetches and parses `rbi.org.in`'s actual notification list, tags NBFC/Co-operative Bank/Small Finance Bank/Bank by keyword heuristics, and can import a circular as a draft policy starting point. Importing calls the Claude API (`draftPolicyFromCircular` in `src/lib/ai.ts`) to draft a first-pass internal policy from the circular's title/summary — same `ANTHROPIC_API_KEY` gate as the other AI features, with a clear placeholder instead of a crash when unset. The draft is explicitly framed as needing review against the actual circular PDF (RBI's listing only exposes titles, not full circular text), never invented specifics
 - Hash-chained audit log with an integrity verification endpoint
 - Tenant-wide pending-consent metric with drill-down (name, employee/vendor, agency, document, pending-since)
 - Editable expiry on a live published version (not just at publish time), plus an "expiring soon" dashboard widget

@@ -24,6 +24,7 @@ export default function RbiPage() {
   const [scraping, setScraping] = useState(false);
   const [families, setFamilies] = useState<Family[]>([]);
   const [importFamilyId, setImportFamilyId] = useState("");
+  const [importingId, setImportingId] = useState<string | null>(null);
 
   async function load() {
     const res = await fetch(`/api/rbi${tag ? `?tag=${tag}` : ""}`);
@@ -50,11 +51,13 @@ export default function RbiPage() {
   }
 
   async function importAsPolicy(id: string) {
+    setImportingId(id);
     const res = await fetch(`/api/rbi/${id}/import`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ familyId: importFamilyId }),
     });
+    setImportingId(null);
     if (res.ok) {
       const { policy } = await res.json();
       router.push(`/admin/policies/${policy.id}`);
@@ -123,10 +126,10 @@ export default function RbiPage() {
               <div className="shrink-0 space-y-2 text-right">
                 <button
                   onClick={() => importAsPolicy(c.id)}
-                  disabled={!!c.importedAsPolicyId}
+                  disabled={!!c.importedAsPolicyId || importingId === c.id}
                   className="block w-full rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                 >
-                  {c.importedAsPolicyId ? "Imported" : "Import as draft policy"}
+                  {c.importedAsPolicyId ? "Imported" : importingId === c.id ? "✨ Drafting with AI…" : "Import as draft policy"}
                 </button>
                 <div>
                   <label className="block text-[11px] font-medium text-slate-500">Implementation deadline</label>
