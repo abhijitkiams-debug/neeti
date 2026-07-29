@@ -8,6 +8,7 @@ const NAV = [
   { href: "/admin/policies", label: "Policies" },
   { href: "/admin/documents", label: "Document Register" },
   { href: "/admin/coverage", label: "Coverage Checklist" },
+  { href: "/admin/employees", label: "Employees" },
   { href: "/admin/vendors", label: "Vendor Orgs" },
   { href: "/admin/reports", label: "Reports" },
   { href: "/admin/rbi", label: "RBI Notifications" },

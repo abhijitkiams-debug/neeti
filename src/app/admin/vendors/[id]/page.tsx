@@ -22,6 +22,10 @@ export default function VendorOrgDetailPage({ params }: { params: Promise<{ id: 
   const [org, setOrg] = useState<Org | null>(null);
   const [uploadResult, setUploadResult] = useState<{ successCount: number; errors: { row: number; reason: string }[] } | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addForm, setAddForm] = useState({ name: "", mobile: "", email: "", vendorUserCode: "", role: VENDOR_ROLES[1] as string, geography: "" });
+  const [addError, setAddError] = useState<string | null>(null);
+  const [addSaving, setAddSaving] = useState(false);
 
   async function load() {
     const res = await fetch(`/api/vendor-orgs/${id}`);
@@ -49,6 +53,26 @@ export default function VendorOrgDetailPage({ params }: { params: Promise<{ id: 
 
   async function deactivateUser(userId: string) {
     await fetch(`/api/vendor-users/${userId}/deactivate`, { method: "POST" });
+    await load();
+  }
+
+  async function addUser(e: React.FormEvent) {
+    e.preventDefault();
+    setAddError(null);
+    setAddSaving(true);
+    const res = await fetch(`/api/vendor-orgs/${id}/users`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(addForm),
+    });
+    setAddSaving(false);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setAddError(typeof d.error === "string" ? d.error : "Could not add vendor user");
+      return;
+    }
+    setAddForm({ name: "", mobile: "", email: "", vendorUserCode: "", role: VENDOR_ROLES[1], geography: "" });
+    setAddOpen(false);
     await load();
   }
 
@@ -89,6 +113,35 @@ export default function VendorOrgDetailPage({ params }: { params: Promise<{ id: 
               </ul>
             )}
           </div>
+        )}
+      </div>
+
+      <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium text-slate-700">Or add one manually</p>
+          <button onClick={() => setAddOpen((o) => !o)} className="text-xs font-medium text-indigo-600 hover:underline">
+            {addOpen ? "Cancel" : "+ Add vendor user"}
+          </button>
+        </div>
+        {addOpen && (
+          <form onSubmit={addUser} className="mt-3 grid grid-cols-3 gap-3">
+            <input required placeholder="Name" value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} className="rounded border border-slate-300 px-2 py-1.5 text-sm" />
+            <input required placeholder="Mobile" value={addForm.mobile} onChange={(e) => setAddForm({ ...addForm, mobile: e.target.value })} className="rounded border border-slate-300 px-2 py-1.5 text-sm" />
+            <input type="email" placeholder="Email (optional)" value={addForm.email} onChange={(e) => setAddForm({ ...addForm, email: e.target.value })} className="rounded border border-slate-300 px-2 py-1.5 text-sm" />
+            <input placeholder="Vendor ID (optional)" value={addForm.vendorUserCode} onChange={(e) => setAddForm({ ...addForm, vendorUserCode: e.target.value })} className="rounded border border-slate-300 px-2 py-1.5 text-sm" />
+            <select value={addForm.role} onChange={(e) => setAddForm({ ...addForm, role: e.target.value })} className="rounded border border-slate-300 px-2 py-1.5 text-sm">
+              {VENDOR_ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+            <input placeholder="Geography (optional)" value={addForm.geography} onChange={(e) => setAddForm({ ...addForm, geography: e.target.value })} className="rounded border border-slate-300 px-2 py-1.5 text-sm" />
+            {addError && <p className="col-span-3 text-sm text-red-600">{addError}</p>}
+            <button type="submit" disabled={addSaving} className="col-span-3 rounded-md bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-60">
+              {addSaving ? "Adding…" : "Add vendor user"}
+            </button>
+          </form>
         )}
       </div>
 

@@ -60,7 +60,7 @@ async function main() {
   }) {
     return prisma.user.upsert({
       where: { tenantId_email: { tenantId: tenant.id, email: opts.email } },
-      update: { passwordHash: pw, employeeId: opts.employeeId },
+      update: { passwordHash: pw, ...opts },
       create: { tenantId: tenant.id, passwordHash: pw, ...opts },
     });
   }
@@ -87,7 +87,7 @@ async function main() {
   async function ensureVendorUser(opts: { vendorOrgId: string; name: string; mobile: string; email?: string; vendorUserCode?: string; role: string; geography: string }) {
     return prisma.vendorUser.upsert({
       where: { tenantId_mobile: { tenantId: tenant.id, mobile: opts.mobile } },
-      update: { email: opts.email, vendorUserCode: opts.vendorUserCode },
+      update: { name: opts.name, email: opts.email, vendorUserCode: opts.vendorUserCode, role: opts.role, geography: opts.geography, vendorOrgId: opts.vendorOrgId },
       create: { tenantId: tenant.id, ...opts },
     });
   }
