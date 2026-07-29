@@ -50,6 +50,7 @@ async function main() {
 
   async function ensureEmployee(opts: {
     email: string;
+    employeeId: string;
     name: string;
     role: string;
     department: string;
@@ -59,49 +60,52 @@ async function main() {
   }) {
     return prisma.user.upsert({
       where: { tenantId_email: { tenantId: tenant.id, email: opts.email } },
-      update: { passwordHash: pw },
+      update: { passwordHash: pw, employeeId: opts.employeeId },
       create: { tenantId: tenant.id, passwordHash: pw, ...opts },
     });
   }
 
-  const admin = await ensureEmployee({ email: "admin@acme.test", name: "Asha Admin", role: "ADMIN", department: "Compliance", location: "Mumbai", grade: "M4", designation: "Head of Compliance" });
-  const publisher = await ensureEmployee({ email: "publisher@acme.test", name: "Priya Publisher", role: "PUBLISHER", department: "Compliance", location: "Mumbai", grade: "M3", designation: "Compliance Manager" });
-  const author = await ensureEmployee({ email: "author@acme.test", name: "Arjun Author", role: "AUTHOR", department: "Compliance", location: "Bengaluru", grade: "M2", designation: "Policy Author" });
-  const employee = await ensureEmployee({ email: "employee@acme.test", name: "Esha Employee", role: "EMPLOYEE", department: "Collections", location: "Delhi", grade: "M1", designation: "Collections Officer" });
-  const rohan = await ensureEmployee({ email: "rohan.sales@acme.test", name: "Rohan Kapoor", role: "EMPLOYEE", department: "Sales", location: "Chennai", grade: "M1", designation: "Sales Executive" });
-  const priyanka = await ensureEmployee({ email: "priyanka.ops@acme.test", name: "Priyanka Rao", role: "EMPLOYEE", department: "Operations", location: "Pune", grade: "M2", designation: "Operations Manager" });
-  const kabir = await ensureEmployee({ email: "kabir.hr@acme.test", name: "Kabir Mehta", role: "EMPLOYEE", department: "HR", location: "Hyderabad", grade: "M1", designation: "HR Executive" });
-  const neha = await ensureEmployee({ email: "neha.it@acme.test", name: "Neha Sharma", role: "EMPLOYEE", department: "IT", location: "Bengaluru", grade: "M2", designation: "IT Systems Lead" });
-  const vivek = await ensureEmployee({ email: "vivek.finance@acme.test", name: "Vivek Nair", role: "EMPLOYEE", department: "Finance", location: "Mumbai", grade: "M3", designation: "Finance Controller" });
-  const divya = await ensureEmployee({ email: "divya.legal@acme.test", name: "Divya Iyer", role: "EMPLOYEE", department: "Legal", location: "Delhi", grade: "M2", designation: "Legal Counsel" });
+  const admin = await ensureEmployee({ email: "admin@acme.test", employeeId: "EMP1001", name: "Asha Admin", role: "ADMIN", department: "Compliance", location: "Mumbai", grade: "M4", designation: "Head of Compliance" });
+  const publisher = await ensureEmployee({ email: "publisher@acme.test", employeeId: "EMP1002", name: "Priya Publisher", role: "PUBLISHER", department: "Compliance", location: "Mumbai", grade: "M3", designation: "Compliance Manager" });
+  const author = await ensureEmployee({ email: "author@acme.test", employeeId: "EMP1003", name: "Arjun Author", role: "AUTHOR", department: "Compliance", location: "Bengaluru", grade: "M2", designation: "Policy Author" });
+  const employee = await ensureEmployee({ email: "employee@acme.test", employeeId: "EMP1004", name: "Esha Employee", role: "EMPLOYEE", department: "Collections", location: "Delhi", grade: "M1", designation: "Collections Officer" });
+  const rohan = await ensureEmployee({ email: "rohan.sales@acme.test", employeeId: "EMP1005", name: "Rohan Kapoor", role: "EMPLOYEE", department: "Sales", location: "Chennai", grade: "M1", designation: "Sales Executive" });
+  const priyanka = await ensureEmployee({ email: "priyanka.ops@acme.test", employeeId: "EMP1006", name: "Priyanka Rao", role: "EMPLOYEE", department: "Operations", location: "Pune", grade: "M2", designation: "Operations Manager" });
+  const kabir = await ensureEmployee({ email: "kabir.hr@acme.test", employeeId: "EMP1007", name: "Kabir Mehta", role: "EMPLOYEE", department: "HR", location: "Hyderabad", grade: "M1", designation: "HR Executive" });
+  const neha = await ensureEmployee({ email: "neha.it@acme.test", employeeId: "EMP1008", name: "Neha Sharma", role: "EMPLOYEE", department: "IT", location: "Bengaluru", grade: "M2", designation: "IT Systems Lead" });
+  const vivek = await ensureEmployee({ email: "vivek.finance@acme.test", employeeId: "EMP1009", name: "Vivek Nair", role: "EMPLOYEE", department: "Finance", location: "Mumbai", grade: "M3", designation: "Finance Controller" });
+  const divya = await ensureEmployee({ email: "divya.legal@acme.test", employeeId: "EMP1010", name: "Divya Iyer", role: "EMPLOYEE", department: "Legal", location: "Delhi", grade: "M2", designation: "Legal Counsel" });
   const allEmployees = [admin, publisher, author, employee, rohan, priyanka, kabir, neha, vivek, divya];
 
   async function ensureVendorOrg(opts: { name: string; type: string; region: string; category: string }) {
     return prisma.vendorOrg.upsert({
       where: { tenantId_name: { tenantId: tenant.id, name: opts.name } },
-      update: {},
+      update: { type: opts.type },
       create: { tenantId: tenant.id, ...opts },
     });
   }
-  async function ensureVendorUser(opts: { vendorOrgId: string; name: string; mobile: string; role: string; geography: string }) {
+  async function ensureVendorUser(opts: { vendorOrgId: string; name: string; mobile: string; email?: string; vendorUserCode?: string; role: string; geography: string }) {
     return prisma.vendorUser.upsert({
       where: { tenantId_mobile: { tenantId: tenant.id, mobile: opts.mobile } },
-      update: {},
+      update: { email: opts.email, vendorUserCode: opts.vendorUserCode },
       create: { tenantId: tenant.id, ...opts },
     });
   }
 
   const recoveryAgency = await ensureVendorOrg({ name: "Reliable Recovery Agency", type: "AGENCY", region: "North", category: "Collections" });
-  const vendorAdmin = await ensureVendorUser({ vendorOrgId: recoveryAgency.id, name: "Vikram Vendor-Admin", mobile: "9800000001", role: "VENDOR_ADMIN", geography: "Delhi-NCR" });
-  const vendorUser = await ensureVendorUser({ vendorOrgId: recoveryAgency.id, name: "Farhan Field-Agent", mobile: "9800000002", role: "VENDOR_USER", geography: "Delhi-NCR" });
+  const vendorAdmin = await ensureVendorUser({ vendorOrgId: recoveryAgency.id, name: "Vikram Vendor-Admin", mobile: "9800000001", email: "vikram@reliablerecovery.test", vendorUserCode: "RRA-001", role: "VENDOR_ADMIN", geography: "Delhi-NCR" });
+  const vendorUser = await ensureVendorUser({ vendorOrgId: recoveryAgency.id, name: "Farhan Field-Agent", mobile: "9800000002", email: "farhan@reliablerecovery.test", vendorUserCode: "RRA-002", role: "FIELD_EXECUTIVE", geography: "Delhi-NCR" });
 
   const swiftBpo = await ensureVendorOrg({ name: "Swift Collections BPO", type: "BPO", region: "South", category: "Collections" });
-  const swiftAdmin = await ensureVendorUser({ vendorOrgId: swiftBpo.id, name: "Meera Swift", mobile: "9800000003", role: "VENDOR_ADMIN", geography: "Bengaluru" });
-  const swiftUser = await ensureVendorUser({ vendorOrgId: swiftBpo.id, name: "Arjun Swift", mobile: "9800000004", role: "VENDOR_USER", geography: "Chennai" });
+  const swiftAdmin = await ensureVendorUser({ vendorOrgId: swiftBpo.id, name: "Meera Swift", mobile: "9800000003", email: "meera@swiftbpo.test", vendorUserCode: "SWB-001", role: "VENDOR_ADMIN", geography: "Bengaluru" });
+  const swiftUser = await ensureVendorUser({ vendorOrgId: swiftBpo.id, name: "Arjun Swift", mobile: "9800000004", email: "arjun@swiftbpo.test", vendorUserCode: "SWB-002", role: "CALLER", geography: "Chennai" });
 
   const dsaPartners = await ensureVendorOrg({ name: "National DSA Partners", type: "DSA", region: "West", category: "Sales" });
-  const dsaAdmin = await ensureVendorUser({ vendorOrgId: dsaPartners.id, name: "Rakesh DSA", mobile: "9800000005", role: "VENDOR_ADMIN", geography: "Mumbai" });
-  const dsaUser = await ensureVendorUser({ vendorOrgId: dsaPartners.id, name: "Sana DSA", mobile: "9800000006", role: "VENDOR_USER", geography: "Pune" });
+  const dsaAdmin = await ensureVendorUser({ vendorOrgId: dsaPartners.id, name: "Rakesh DSA", mobile: "9800000005", email: "rakesh@nationaldsa.test", vendorUserCode: "NDP-001", role: "VENDOR_ADMIN", geography: "Mumbai" });
+  const dsaUser = await ensureVendorUser({ vendorOrgId: dsaPartners.id, name: "Sana DSA", mobile: "9800000006", email: "sana@nationaldsa.test", vendorUserCode: "NDP-002", role: "VENDOR_USER", geography: "Pune" });
+
+  const digitalAgency = await ensureVendorOrg({ name: "PixelWave Digital Agency", type: "DIGITAL_AGENCY", region: "South", category: "Marketing" });
+  await ensureVendorUser({ vendorOrgId: digitalAgency.id, name: "Kavya Digital", mobile: "9800000007", email: "kavya@pixelwave.test", vendorUserCode: "PWD-001", role: "VENDOR_ADMIN", geography: "Hyderabad" });
 
   const allVendorOrgIds = [recoveryAgency.id, swiftBpo.id, dsaPartners.id];
 
@@ -490,7 +494,7 @@ async function main() {
   });
 
   console.log("Seed complete.");
-  console.log(`  ${allEmployees.length} employees, 3 vendor orgs (6 vendor users), 8 policies across ${families.length} families.`);
+  console.log(`  ${allEmployees.length} employees, 4 vendor orgs (7 vendor users), 8 policies across ${families.length} families.`);
   console.log("Employee logins (password: admin1234):");
   console.log(`  Admin:     ${admin.email}`);
   console.log(`  Publisher: ${publisher.email}`);

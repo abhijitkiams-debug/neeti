@@ -1,10 +1,13 @@
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { prisma } from "./prisma";
+import { VENDOR_ROLES } from "./enums";
 
 export type VendorUploadRow = {
   name: string;
   mobile: string;
+  email?: string;
+  vendorUserCode?: string;
   role?: string;
   geography?: string;
 };
@@ -40,6 +43,8 @@ export async function bulkUploadVendorUsers(params: {
     const raw = rows[i];
     const name = String(raw.name ?? raw.Name ?? "").trim();
     const mobile = String(raw.mobile ?? raw.Mobile ?? "").trim();
+    const email = String(raw.email ?? raw.Email ?? "").trim();
+    const vendorUserCode = String(raw.vendorUserCode ?? raw.vendorId ?? raw.VendorId ?? "").trim();
     const role = String(raw.role ?? raw.Role ?? "VENDOR_USER").trim().toUpperCase();
     const geography = String(raw.geography ?? raw.Geography ?? "").trim();
 
@@ -53,20 +58,34 @@ export async function bulkUploadVendorUsers(params: {
       errors.push({ row: rowNum, reason: `Invalid mobile number: ${mobile}` });
       continue;
     }
-    if (!["VENDOR_ADMIN", "VENDOR_USER"].includes(role)) {
-      errors.push({ row: rowNum, reason: `Invalid role: ${role} (expected VENDOR_ADMIN or VENDOR_USER)` });
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.push({ row: rowNum, reason: `Invalid email: ${email}` });
+      continue;
+    }
+    if (!(VENDOR_ROLES as readonly string[]).includes(role)) {
+      errors.push({ row: rowNum, reason: `Invalid role: ${role} (expected one of ${VENDOR_ROLES.join(", ")})` });
       continue;
     }
 
     try {
       await prisma.vendorUser.upsert({
         where: { tenantId_mobile: { tenantId: params.tenantId, mobile } },
-        update: { name, role, geography: geography || null, vendorOrgId: params.vendorOrgId, status: "ACTIVE" },
+        update: {
+          name,
+          role,
+          geography: geography || null,
+          email: email || null,
+          vendorUserCode: vendorUserCode || null,
+          vendorOrgId: params.vendorOrgId,
+          status: "ACTIVE",
+        },
         create: {
           tenantId: params.tenantId,
           vendorOrgId: params.vendorOrgId,
           name,
           mobile,
+          email: email || null,
+          vendorUserCode: vendorUserCode || null,
           role,
           geography: geography || null,
         },

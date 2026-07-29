@@ -2,8 +2,18 @@
 
 import { useEffect, useState, use as usePromise } from "react";
 import { Badge } from "@/components/Badge";
+import { VENDOR_ROLES } from "@/lib/enums";
 
-type VendorUser = { id: string; name: string; mobile: string; role: string; geography: string | null; status: string };
+type VendorUser = {
+  id: string;
+  name: string;
+  mobile: string;
+  email: string | null;
+  vendorUserCode: string | null;
+  role: string;
+  geography: string | null;
+  status: string;
+};
 type UploadBatch = { id: string; fileName: string; totalRows: number; successCount: number; errorCount: number; errorLog: string; createdAt: string };
 type Org = { id: string; name: string; type: string; region: string; category: string; status: string; vendorUsers: VendorUser[]; uploadBatches: UploadBatch[] };
 
@@ -56,7 +66,9 @@ export default function VendorOrgDetailPage({ params }: { params: Promise<{ id: 
 
       <div className="mt-6 rounded-lg border border-dashed border-slate-300 bg-white p-4">
         <p className="text-sm font-medium text-slate-700">Bulk upload vendor users</p>
-        <p className="mt-1 text-xs text-slate-500">CSV or XLSX with columns: name, mobile, role (VENDOR_ADMIN/VENDOR_USER), geography.</p>
+        <p className="mt-1 text-xs text-slate-500">
+          CSV or XLSX with columns: name, mobile, email, vendorUserCode, role ({VENDOR_ROLES.join("/")}), geography.
+        </p>
         <input
           type="file"
           accept=".csv,.xlsx"
@@ -85,7 +97,9 @@ export default function VendorOrgDetailPage({ params }: { params: Promise<{ id: 
         <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
           <tr>
             <th className="px-4 py-2">Name</th>
+            <th className="px-4 py-2">Vendor ID</th>
             <th className="px-4 py-2">Mobile</th>
+            <th className="px-4 py-2">Email</th>
             <th className="px-4 py-2">Role</th>
             <th className="px-4 py-2">Geography</th>
             <th className="px-4 py-2">Status</th>
@@ -96,7 +110,9 @@ export default function VendorOrgDetailPage({ params }: { params: Promise<{ id: 
           {org.vendorUsers.map((u) => (
             <tr key={u.id}>
               <td className="px-4 py-2">{u.name}</td>
+              <td className="px-4 py-2 text-slate-600">{u.vendorUserCode ?? "—"}</td>
               <td className="px-4 py-2 text-slate-600">{u.mobile}</td>
+              <td className="px-4 py-2 text-slate-600">{u.email ?? "—"}</td>
               <td className="px-4 py-2 text-slate-600">{u.role}</td>
               <td className="px-4 py-2 text-slate-600">{u.geography ?? "—"}</td>
               <td className="px-4 py-2">
@@ -113,7 +129,7 @@ export default function VendorOrgDetailPage({ params }: { params: Promise<{ id: 
           ))}
           {org.vendorUsers.length === 0 && (
             <tr>
-              <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
+              <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
                 No vendor users yet.
               </td>
             </tr>

@@ -46,6 +46,7 @@ model User {
   tenant        Tenant        @relation(fields: [tenantId], references: [id])
 
   email         String
+  employeeId    String?       // HRMS-issued ID, shown in lists/exports and usable for named targeting
   name          String
   passwordHash  String?       // only set for String.MANUAL accounts;
                                // AD_SYNC accounts have no local password
@@ -82,6 +83,7 @@ model User {
   policyTranslations PolicyTranslation[]
 
   @@unique([tenantId, email])
+  @@unique([tenantId, employeeId])
   @@index([tenantId, department])
   @@index([tenantId, location])
   @@index([tenantId, grade])
@@ -123,6 +125,8 @@ model VendorUser {
 
   name         String
   mobile       String        // OTP login identity
+  email        String?       // optional — shown in lists/exports, usable for named targeting
+  vendorUserCode String?     // vendor-issued ID (badge/employee code at the agency)
   role         String    @default("VENDOR_USER")
   geography    String?
   status       String @default("ACTIVE")
