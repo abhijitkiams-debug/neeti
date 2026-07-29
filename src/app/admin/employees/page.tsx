@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/Badge";
 import { EMPLOYEE_ROLES } from "@/lib/enums";
 
@@ -36,14 +37,21 @@ export default function EmployeesPage() {
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [signoff, setSignoff] = useState<{ percent: number; totalApplicable: number; totalAttested: number } | null>(null);
 
   async function load() {
     const res = await fetch("/api/employees");
     if (res.ok) setEmployees((await res.json()).employees);
   }
 
+  async function loadSignoff() {
+    const res = await fetch("/api/employees/signoff-summary");
+    if (res.ok) setSignoff(await res.json());
+  }
+
   useEffect(() => {
     load();
+    loadSignoff();
   }, []);
 
   async function createEmployee(e: React.FormEvent) {
@@ -83,6 +91,17 @@ export default function EmployeesPage() {
       <p className="mt-1 text-sm text-slate-500">
         No AD sync is wired up in this build (see README) — employees are seeded or added manually here.
       </p>
+
+      {signoff && (
+        <div className="mt-4 inline-flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
+          <p className={`text-2xl font-semibold ${signoff.percent === 100 ? "text-emerald-600" : signoff.percent >= 50 ? "text-amber-600" : "text-red-600"}`}>
+            {signoff.percent}%
+          </p>
+          <p className="text-sm text-slate-500">
+            document sign-off completion across employees ({signoff.totalAttested} / {signoff.totalApplicable})
+          </p>
+        </div>
+      )}
 
       {open && (
         <form onSubmit={createEmployee} className="mt-4 grid grid-cols-4 gap-3 rounded-lg border border-slate-200 bg-white p-4">
@@ -124,7 +143,11 @@ export default function EmployeesPage() {
         <tbody className="divide-y divide-slate-100">
           {employees.map((e) => (
             <tr key={e.id}>
-              <td className="px-4 py-2 font-medium text-slate-800">{e.name}</td>
+              <td className="px-4 py-2 font-medium">
+                <Link href={`/admin/employees/${e.id}`} className="text-indigo-700 hover:underline">
+                  {e.name}
+                </Link>
+              </td>
               <td className="px-4 py-2 text-slate-600">{e.employeeId ?? "—"}</td>
               <td className="px-4 py-2 text-slate-600">{e.email}</td>
               <td className="px-4 py-2 text-slate-600">{e.role}</td>

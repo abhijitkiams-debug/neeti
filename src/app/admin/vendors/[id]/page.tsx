@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, use as usePromise } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/Badge";
 import { VENDOR_ROLES } from "@/lib/enums";
 
@@ -26,14 +27,21 @@ export default function VendorOrgDetailPage({ params }: { params: Promise<{ id: 
   const [addForm, setAddForm] = useState({ name: "", mobile: "", email: "", vendorUserCode: "", role: VENDOR_ROLES[1] as string, geography: "" });
   const [addError, setAddError] = useState<string | null>(null);
   const [addSaving, setAddSaving] = useState(false);
+  const [signoff, setSignoff] = useState<{ percent: number; totalApplicable: number; totalAttested: number; perUser: { vendorUserId: string; percent: number }[] } | null>(null);
 
   async function load() {
     const res = await fetch(`/api/vendor-orgs/${id}`);
     if (res.ok) setOrg((await res.json()).org);
   }
 
+  async function loadSignoff() {
+    const res = await fetch(`/api/vendor-orgs/${id}/signoff-summary`);
+    if (res.ok) setSignoff(await res.json());
+  }
+
   useEffect(() => {
     load();
+    loadSignoff();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -87,6 +95,17 @@ export default function VendorOrgDetailPage({ params }: { params: Promise<{ id: 
       <p className="mt-1 text-sm text-slate-500">
         {org.type} · {org.region} · {org.category}
       </p>
+
+      {signoff && (
+        <div className="mt-4 inline-flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
+          <p className={`text-2xl font-semibold ${signoff.percent === 100 ? "text-emerald-600" : signoff.percent >= 50 ? "text-amber-600" : "text-red-600"}`}>
+            {signoff.percent}%
+          </p>
+          <p className="text-sm text-slate-500">
+            document sign-off completion ({signoff.totalAttested} / {signoff.totalApplicable})
+          </p>
+        </div>
+      )}
 
       <div className="mt-6 rounded-lg border border-dashed border-slate-300 bg-white p-4">
         <p className="text-sm font-medium text-slate-700">Bulk upload vendor users</p>
@@ -155,34 +174,51 @@ export default function VendorOrgDetailPage({ params }: { params: Promise<{ id: 
             <th className="px-4 py-2">Email</th>
             <th className="px-4 py-2">Role</th>
             <th className="px-4 py-2">Geography</th>
+            <th className="px-4 py-2">Sign-off</th>
             <th className="px-4 py-2">Status</th>
             <th className="px-4 py-2" />
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {org.vendorUsers.map((u) => (
-            <tr key={u.id}>
-              <td className="px-4 py-2">{u.name}</td>
-              <td className="px-4 py-2 text-slate-600">{u.vendorUserCode ?? "—"}</td>
-              <td className="px-4 py-2 text-slate-600">{u.mobile}</td>
-              <td className="px-4 py-2 text-slate-600">{u.email ?? "—"}</td>
-              <td className="px-4 py-2 text-slate-600">{u.role}</td>
-              <td className="px-4 py-2 text-slate-600">{u.geography ?? "—"}</td>
-              <td className="px-4 py-2">
-                <Badge status={u.status} />
-              </td>
-              <td className="px-4 py-2">
-                {u.status === "ACTIVE" && (
-                  <button onClick={() => deactivateUser(u.id)} className="text-xs text-red-600 hover:underline">
-                    Deactivate
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
+          {org.vendorUsers.map((u) => {
+            const userSignoff = signoff?.perUser.find((p) => p.vendorUserId === u.id);
+            return (
+              <tr key={u.id}>
+                <td className="px-4 py-2">
+                  <Link href={`/admin/vendor-users/${u.id}`} className="font-medium text-indigo-700 hover:underline">
+                    {u.name}
+                  </Link>
+                </td>
+                <td className="px-4 py-2 text-slate-600">{u.vendorUserCode ?? "—"}</td>
+                <td className="px-4 py-2 text-slate-600">{u.mobile}</td>
+                <td className="px-4 py-2 text-slate-600">{u.email ?? "—"}</td>
+                <td className="px-4 py-2 text-slate-600">{u.role}</td>
+                <td className="px-4 py-2 text-slate-600">{u.geography ?? "—"}</td>
+                <td className="px-4 py-2">
+                  {userSignoff ? (
+                    <span className={userSignoff.percent === 100 ? "font-medium text-emerald-600" : userSignoff.percent >= 50 ? "font-medium text-amber-600" : "font-medium text-red-600"}>
+                      {userSignoff.percent}%
+                    </span>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-4 py-2">
+                  <Badge status={u.status} />
+                </td>
+                <td className="px-4 py-2">
+                  {u.status === "ACTIVE" && (
+                    <button onClick={() => deactivateUser(u.id)} className="text-xs text-red-600 hover:underline">
+                      Deactivate
+                    </button>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
           {org.vendorUsers.length === 0 && (
             <tr>
-              <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
+              <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
                 No vendor users yet.
               </td>
             </tr>
