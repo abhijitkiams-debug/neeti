@@ -26,6 +26,7 @@ model Tenant {
 
   users               User[]
   vendorOrgs          VendorOrg[]
+  employeeOrgs        EmployeeOrg[]
   policyFamilies      PolicyFamily[]
   policies            Policy[]
   notifications       Notification[]
@@ -597,4 +598,20 @@ model AuditLog {
   createdAt  DateTime @default(now())
 
   @@index([tenantId, entityType, entityId])
+}
+
+// Admin-managed catalog of internal business units/departments — the
+// employee-side counterpart to VendorOrg. User.department stays a free-text
+// field (so nothing about existing targeting breaks); this just gives
+// Admins a managed list to pick consistent values from, surfaced under
+// Settings.
+model EmployeeOrg {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  @@unique([tenantId, name])
 }

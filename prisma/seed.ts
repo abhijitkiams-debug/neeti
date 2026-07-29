@@ -77,6 +77,24 @@ async function main() {
   const divya = await ensureEmployee({ email: "divya.legal@acme.test", employeeId: "EMP1010", name: "Divya Iyer", role: "EMPLOYEE", department: "Legal", location: "Delhi", grade: "M2", designation: "Legal Counsel" });
   const allEmployees = [admin, publisher, author, employee, rohan, priyanka, kabir, neha, vivek, divya];
 
+  const EMPLOYEE_ORGS = [
+    { name: "Compliance", description: "Policy authoring, approvals, and regulatory compliance" },
+    { name: "Collections", description: "Loan collections and recovery operations" },
+    { name: "Sales", description: "New business origination" },
+    { name: "Operations", description: "Day-to-day operational support" },
+    { name: "HR", description: "Human resources" },
+    { name: "IT", description: "Information technology and systems" },
+    { name: "Finance", description: "Finance and accounts" },
+    { name: "Legal", description: "Legal and secretarial" },
+  ];
+  for (const org of EMPLOYEE_ORGS) {
+    await prisma.employeeOrg.upsert({
+      where: { tenantId_name: { tenantId: tenant.id, name: org.name } },
+      update: { description: org.description },
+      create: { tenantId: tenant.id, ...org },
+    });
+  }
+
   async function ensureVendorOrg(opts: { name: string; type: string; region: string; category: string }) {
     return prisma.vendorOrg.upsert({
       where: { tenantId_name: { tenantId: tenant.id, name: opts.name } },
