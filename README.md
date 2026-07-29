@@ -182,6 +182,24 @@ works identically on Postgres.
   actually have a saved translation; the portal falls back to the English original
   otherwise. Translations are editorial/supplementary — they don't go through the
   maker-checker approval flow the base English content does.
+- **Employee/vendor identity catalogs and self-service management** — `employeeId`
+  on employees, `email`/vendor ID on vendor users; a manageable Employee Org catalog
+  (`/admin/employee-orgs`, mirroring Vendor Orgs) alongside the existing free-text
+  `department` field; manual single-user creation for both employees and vendor users
+  next to the existing CSV bulk upload; a `/admin/settings` hub consolidating Security
+  and the identity catalogs.
+- **Per-person sign-off visibility and completion %** — click any employee or vendor
+  user to see every policy currently applicable to them with a clear Signed/Not signed
+  badge (`src/lib/signoff.ts`); the Employees page and each Vendor Org page show an
+  overall completion % (and the vendor-user table a per-person %).
+- **Mandatory sign-off gating** — a "Mandatory" toggle on a published version
+  (`PolicyVersion.mandatory`). Unsigned mandatory docs get repeat reminder emails via
+  `npm run remind:mandatory` (see Scheduled jobs below), and vendor users in the
+  FIELD_EXECUTIVE/CALLER roles are redirected to `/portal/sign-required` — a hard gate
+  in front of the rest of the portal — until they sign every mandatory document
+  targeted at them (`src/lib/gating.ts`). General vendor users, vendor admins, and
+  employees only get the reminder-email treatment, not a portal block, since there's
+  no real notion of "starting work" to gate for those roles in this app.
 
 **Intentionally stubbed / documented limitations:**
 - **AD/SAML SSO** — see [above](#auth--the-ad--sso-swap-point); explicitly out of scope for this build
@@ -204,11 +222,12 @@ works identically on Postgres.
 
 ## Scheduled jobs
 
-Two standalone scripts are provided for cron/Task Scheduler wiring:
+Three standalone scripts are provided for cron/Task Scheduler wiring:
 
 ```bash
 npm run rbi:scrape        # scrapes rbi.org.in and upserts RbiCircular rows
 npm run policies:expire   # auto-unpublishes any PUBLISHED version past its expiresAt
+npm run remind:mandatory  # re-notifies everyone with an outstanding mandatory sign-off — run daily
 ```
 
 ## Security notes

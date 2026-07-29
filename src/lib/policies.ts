@@ -282,6 +282,48 @@ async function notifyAudience(params: {
   }
 }
 
+/**
+ * Run by a scheduled job (see scripts/remind-mandatory-unsigned.ts) — every
+ * run re-notifies everyone who still hasn't attested a mandatory published
+ * policy, across every such policy in the tenant. Deliberately not
+ * deduplicated against previous runs: the point is repeated reminders for
+ * an outstanding mandatory sign-off, same as the manual "Remind unread
+ * only" button but keyed on attestation instead of read state and run on a
+ * schedule instead of by hand.
+ */
+export async function remindUnsignedMandatory(tenantId: string) {
+  const versions = await prisma.policyVersion.findMany({
+    where: { status: "PUBLISHED", mandatory: true, policy: { tenantId } },
+  });
+
+  let remindedEmployees = 0;
+  let remindedVendors = 0;
+  for (const version of versions) {
+    const [members, attestations] = await Promise.all([
+      prisma.audienceMember.findMany({ where: { policyVersionId: version.id } }),
+      prisma.attestation.findMany({ where: { policyVersionId: version.id } }),
+    ]);
+    const attestedUserIds = new Set(attestations.filter((a) => a.userId).map((a) => a.userId));
+    const attestedVendorUserIds = new Set(attestations.filter((a) => a.vendorUserId).map((a) => a.vendorUserId));
+
+    const unsignedEmployees = members.filter((m) => m.userId && !attestedUserIds.has(m.userId)).map((m) => m.userId!);
+    const unsignedVendors = members.filter((m) => m.vendorUserId && !attestedVendorUserIds.has(m.vendorUserId)).map((m) => m.vendorUserId!);
+
+    await notifyAudience({
+      tenantId,
+      versionId: version.id,
+      type: "REMINDER",
+      employeeIds: unsignedEmployees,
+      vendorUserIds: unsignedVendors,
+    });
+
+    remindedEmployees += unsignedEmployees.length;
+    remindedVendors += unsignedVendors.length;
+  }
+
+  return { versionsChecked: versions.length, remindedEmployees, remindedVendors };
+}
+
 /** Run by a scheduled job (see scripts/expire-policies.ts) to auto-unpublish anything past its expiry. */
 export async function autoExpirePastDue(tenantId: string) {
   const due = await prisma.policyVersion.findMany({

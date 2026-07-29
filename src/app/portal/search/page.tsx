@@ -3,10 +3,12 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { visiblePolicyIdsFor } from "@/lib/consumption";
+import { requirePortalAccess } from "@/lib/gating";
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const session = await getSession();
   if (!session) redirect("/login");
+  await requirePortalAccess(session);
   const { q } = await searchParams;
   const query = q?.trim() ?? "";
 

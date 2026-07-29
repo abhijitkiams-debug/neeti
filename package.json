@@ -12,7 +12,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "rbi:scrape": "tsx scripts/scrape-rbi.ts",
-    "policies:expire": "tsx scripts/expire-policies.ts"
+    "policies:expire": "tsx scripts/expire-policies.ts",
+    "remind:mandatory": "tsx scripts/remind-mandatory-unsigned.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",

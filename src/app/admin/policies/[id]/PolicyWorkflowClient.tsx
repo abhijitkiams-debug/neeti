@@ -25,6 +25,7 @@ type Version = {
   approvalComment: string | null;
   publishedAt: string | null;
   expiresAt: string | null;
+  mandatory: boolean;
   targetRules: { kind: string; attribute: string | null; values: string }[];
   _count: { audienceMembers: number; readReceipts: number; attestations: number };
 };
@@ -345,9 +346,21 @@ export function PolicyWorkflowClient({ policyId, currentUserId, role }: { policy
 
       {version.status === "PUBLISHED" && (
         <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-          <p className="text-sm font-medium text-emerald-800">
-            Published to {version._count.audienceMembers} recipients · {version._count.readReceipts} read · {version._count.attestations} attested
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-emerald-800">
+              Published to {version._count.audienceMembers} recipients · {version._count.readReceipts} read · {version._count.attestations} attested
+            </p>
+            {CAN_PUBLISH.includes(role) && (
+              <label className="flex items-center gap-2 text-xs font-medium text-emerald-800">
+                <input
+                  type="checkbox"
+                  checked={version.mandatory}
+                  onChange={(e) => call(`/api/policies/${policyId}/versions/${version.id}/mandatory`, { mandatory: e.target.checked }, "PATCH")}
+                />
+                Mandatory sign-off — repeated reminders; blocks Field Executive/Caller portal access until signed
+              </label>
+            )}
+          </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {CAN_PUBLISH.includes(role) && (
               <>

@@ -3,10 +3,12 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sessionIdentity } from "@/lib/consumption";
+import { requirePortalAccess } from "@/lib/gating";
 
 export default async function StarredPage() {
   const session = await getSession();
   if (!session) redirect("/login");
+  await requirePortalAccess(session);
   const { userId, vendorUserId } = sessionIdentity(session);
 
   const stars = await prisma.star.findMany({
