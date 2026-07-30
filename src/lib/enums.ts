@@ -64,8 +64,11 @@ export type TargetKind = (typeof TARGET_KINDS)[number];
 export const ATTESTATION_METHODS = ["AD_REVERIFY", "OTP"] as const;
 export type AttestationMethod = (typeof ATTESTATION_METHODS)[number];
 
-export const NOTIFICATION_TYPES = ["PUBLISH", "REMINDER", "EXPIRY"] as const;
+export const NOTIFICATION_TYPES = ["PUBLISH", "REMINDER", "EXPIRY", "REVIEW_REQUEST"] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+
+export const REVIEW_STATUSES = ["PENDING", "APPROVED", "CHANGES_REQUESTED"] as const;
+export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
 export const NOTIFICATION_CHANNELS = ["EMAIL", "SMS"] as const;
 export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];

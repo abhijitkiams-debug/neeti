@@ -8,6 +8,7 @@ import { TargetingEditor, type TargetRule } from "./TargetingEditor";
 import { QuizManager } from "./QuizManager";
 import { EngagementMetrics } from "./EngagementMetrics";
 import { QuestionsPanel } from "./QuestionsPanel";
+import { ReviewersPanel } from "./ReviewersPanel";
 import { LANGUAGES } from "@/lib/enums";
 
 type Translation = { languageCode: string; contentHtml: string; machineTranslated: boolean };
@@ -333,6 +334,8 @@ export function PolicyWorkflowClient({ policyId, currentUserId, role }: { policy
           <strong>{version.approver?.name}:</strong> {version.approvalComment}
         </p>
       )}
+
+      <ReviewersPanel policyId={policyId} versionId={version.id} currentUserId={currentUserId} canManage={CAN_AUTHOR.includes(role)} />
 
       {["APPROVED", "DRAFT", "IN_REVIEW", "REJECTED"].includes(version.status) && CAN_PUBLISH.includes(role) && (
         <TargetingEditor

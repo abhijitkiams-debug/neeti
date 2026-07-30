@@ -82,6 +82,8 @@ model User {
   questionsAsked     PolicyQuestion[] @relation("QuestionAskedBy")
   questionsAnswered  PolicyQuestion[] @relation("QuestionAnsweredBy")
   policyTranslations PolicyTranslation[]
+  reviewAssignments  PolicyReviewAssignment[] @relation("ReviewerAssignments")
+  reviewsInvited     PolicyReviewAssignment[] @relation("ReviewInvitedBy")
 
   @@unique([tenantId, email])
   @@unique([tenantId, employeeId])
@@ -255,8 +257,34 @@ model PolicyVersion {
   policyFeedback   PolicyFeedback[]
   questions        PolicyQuestion[]
   translations     PolicyTranslation[]
+  reviewers        PolicyReviewAssignment[]
 
   @@unique([policyId, versionNumber])
+}
+
+// A parallel, advisory review round alongside the single publisher
+// maker-checker approval (ApprovalAction) — multiple named employees can
+// be asked to review a version and record Approve / Request Changes with
+// an observation comment. Visibility-only: it does not itself gate
+// publish, since the existing single-approver step remains the actual
+// compliance control.
+model PolicyReviewAssignment {
+  id              String        @id @default(cuid())
+  policyVersionId String
+  policyVersion   PolicyVersion @relation(fields: [policyVersionId], references: [id])
+
+  reviewerId      String
+  reviewer        User          @relation("ReviewerAssignments", fields: [reviewerId], references: [id])
+
+  status          String        @default("PENDING") // PENDING | APPROVED | CHANGES_REQUESTED
+  comment         String?
+  respondedAt     DateTime?
+
+  invitedById     String
+  invitedBy       User          @relation("ReviewInvitedBy", fields: [invitedById], references: [id])
+  invitedAt       DateTime      @default(now())
+
+  @@unique([policyVersionId, reviewerId])
 }
 
 // One row per (version, language) holding a translated copy of
