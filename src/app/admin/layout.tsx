@@ -27,7 +27,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-3">
             <Link href="/admin" className="text-lg font-semibold text-indigo-700">
-              Neeti Admin
+              Neeti
             </Link>
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{session.role}</span>
           </div>
