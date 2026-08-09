@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RBI_TAGS } from "@/lib/enums";
+import { formatDate } from "@/lib/dates";
 
 type Circular = {
   id: string;
@@ -114,7 +115,7 @@ export default function RbiPage() {
                   {c.title}
                 </a>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  {c.publishedDate ? new Date(c.publishedDate).toLocaleDateString() : "Undated"} ·{" "}
+                  {c.publishedDate ? formatDate(c.publishedDate) : "Undated"} ·{" "}
                   {c.tags.map((t) => (
                     <span key={t} className="mr-1 rounded-full bg-slate-100 px-2 py-0.5">
                       {t}

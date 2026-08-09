@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/Badge";
+import { formatDate } from "@/lib/dates";
 
 type Doc = {
   id: string;
@@ -72,8 +73,8 @@ export default function DocumentsPage() {
               <td className="px-4 py-3 text-slate-600">
                 v{d.versionNumber} ({d.totalVersions} total)
               </td>
-              <td className="px-4 py-3 text-slate-500">{d.publishedAt ? new Date(d.publishedAt).toLocaleDateString() : "—"}</td>
-              <td className="px-4 py-3 text-slate-500">{d.expiresAt ? new Date(d.expiresAt).toLocaleDateString() : "—"}</td>
+              <td className="px-4 py-3 text-slate-500">{d.publishedAt ? formatDate(d.publishedAt) : "—"}</td>
+              <td className="px-4 py-3 text-slate-500">{d.expiresAt ? formatDate(d.expiresAt) : "—"}</td>
             </tr>
           ))}
           {filtered.length === 0 && (

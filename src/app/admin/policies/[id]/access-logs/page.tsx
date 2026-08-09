@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use as usePromise } from "react";
 import Link from "next/link";
+import { formatDateTime } from "@/lib/dates";
 
 type LogRow = {
   id: string;
@@ -49,7 +50,7 @@ export default function AccessLogsPage({ params }: { params: Promise<{ id: strin
         <tbody className="divide-y divide-slate-100">
           {logs?.map((l) => (
             <tr key={l.id} className="hover:bg-slate-50">
-              <td className="px-4 py-2 text-slate-500 whitespace-nowrap">{new Date(l.accessedAt).toLocaleString()}</td>
+              <td className="px-4 py-2 text-slate-500 whitespace-nowrap">{formatDateTime(l.accessedAt)}</td>
               <td className="px-4 py-2 font-medium text-slate-800">{l.name}</td>
               <td className="px-4 py-2 text-slate-600">{l.type}</td>
               <td className="px-4 py-2 text-slate-600">{l.agencyName ?? "—"}</td>

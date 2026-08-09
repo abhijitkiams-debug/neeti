@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/Badge";
+import { formatDate } from "@/lib/dates";
 
 type Question = {
   id: string;
@@ -53,7 +54,7 @@ export function QuestionsPanel({ policyId }: { policyId: string }) {
                 <p className="text-slate-800">{q.questionText}</p>
                 <p className="mt-0.5 text-xs text-slate-500">
                   {q.askedByName} <Badge status={q.askedByType} /> {q.agencyName && <span>· {q.agencyName}</span>} ·{" "}
-                  {new Date(q.createdAt).toLocaleDateString()}
+                  {formatDate(q.createdAt)}
                 </p>
               </div>
               <Badge status={q.status} />

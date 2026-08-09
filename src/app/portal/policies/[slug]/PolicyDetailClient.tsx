@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { LANGUAGES } from "@/lib/enums";
+import { formatDate } from "@/lib/dates";
 
 // pdfjs-dist crashes at module-evaluation time under the webpack dev
 // compiler if imported eagerly, which would break every policy page (not
@@ -74,7 +75,7 @@ export function PolicyDetailClient({
           {data && (
             <p className="mt-1 text-sm text-slate-500">
               Version {data.policy.versionNumber} · Published{" "}
-              {data.policy.publishedAt ? new Date(data.policy.publishedAt).toLocaleDateString() : ""}
+              {data.policy.publishedAt ? formatDate(data.policy.publishedAt) : ""}
             </p>
           )}
         </div>
