@@ -410,6 +410,51 @@ async function main() {
     ]);
   }
 
+  const { policy: grievancePolicy, version: grievanceVersion } = await progressPolicy({
+    familyId: hr.id,
+    title: "Employee Grievance Redressal Policy",
+    slug: "employee-grievance-redressal-policy",
+    contentHtml: `<h2 id="purpose">Purpose</h2><p>Gives every employee a clear, confidential channel to raise workplace grievances — including disputes with a manager, unfair treatment, or breach of company policy — and sets out how they get investigated and resolved.</p><h2>Process</h2><ul><li>Raise the grievance with your manager first, where appropriate</li><li>Unresolved or sensitive matters go to HR via the Grievance Redressal Committee</li><li>Acknowledgement within 3 working days; resolution target of 30 days</li><li>No retaliation against an employee for raising a grievance in good faith</li></ul>`,
+    targetState: "PUBLISHED",
+    targetRules: [{ kind: "EMPLOYEE_ATTRIBUTE", attribute: "department", values: DEPARTMENTS }],
+  });
+  await addQuizQuestions(grievancePolicy.id, [
+    {
+      text: "Within how many working days must a grievance be acknowledged?",
+      explanation: "The Employee Grievance Redressal Policy requires acknowledgement within 3 working days of a grievance being raised.",
+      options: [
+        { text: "3 working days", isCorrect: true },
+        { text: "10 working days", isCorrect: false },
+        { text: "30 working days", isCorrect: false },
+        { text: "There is no acknowledgement requirement", isCorrect: false },
+      ],
+    },
+    {
+      text: "What happens to an employee who raises a grievance in good faith?",
+      explanation: "The policy explicitly prohibits retaliation against an employee for raising a grievance in good faith.",
+      options: [
+        { text: "They are protected from retaliation", isCorrect: true },
+        { text: "Their case is automatically escalated to legal", isCorrect: false },
+        { text: "They must first resign from their role", isCorrect: false },
+        { text: "It is recorded against their annual appraisal", isCorrect: false },
+      ],
+    },
+  ]);
+  if (grievanceVersion.publishedAt) {
+    await seedEngagement(grievanceVersion.id, grievanceVersion.publishedAt, [
+      { userId: employee.id }, { userId: rohan.id }, { userId: priyanka.id }, { userId: kabir.id }, { userId: neha.id }, { userId: vivek.id }, { userId: divya.id },
+    ]);
+  }
+
+  // Performance Management Policy: still under review, to populate the HR approval queue.
+  await progressPolicy({
+    familyId: hr.id,
+    title: "Performance Management & Appraisal Policy",
+    slug: "performance-management-appraisal-policy",
+    contentHtml: `<h2 id="purpose">Purpose</h2><p>Draft — defines the annual goal-setting, mid-year check-in, and appraisal cycle used to assess employee performance and determine increments and promotions.</p>`,
+    targetState: "IN_REVIEW",
+  });
+
   // POSH Policy: approved but deliberately not yet published, to populate a real "ready to publish" item.
   await progressPolicy({
     familyId: hr.id,
