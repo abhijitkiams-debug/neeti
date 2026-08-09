@@ -82,7 +82,7 @@ export default function CoveragePage() {
             <th className="px-4 py-2">Item</th>
             <th className="px-4 py-2">Family</th>
             <th className="px-4 py-2">Scope</th>
-            <th className="px-4 py-2">Status</th>
+            <th className="px-4 py-2 whitespace-nowrap">Status</th>
             <th className="px-4 py-2">Linked policy</th>
           </tr>
         </thead>
@@ -94,7 +94,7 @@ export default function CoveragePage() {
               <td className="px-4 py-2">
                 <Badge status={it.mandatory ? "Mandatory" : "Recommended"} />
               </td>
-              <td className="px-4 py-2">
+              <td className="px-4 py-2 whitespace-nowrap">
                 <Badge status={it.status} />
               </td>
               <td className="px-4 py-2">
